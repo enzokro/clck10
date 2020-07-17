@@ -1,23 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <url>
-<loc>https://enzokro.dev/blog/markdown/2020/01/14/test-markdown-post.html</loc>
+<loc>https://blog.enzokro.dev/markdown/2020/01/14/test-markdown-post.html</loc>
 <lastmod>2020-01-14T00:00:00-06:00</lastmod>
 </url>
 <url>
-<loc>https://enzokro.dev/blog/jupyter/2020/02/20/test.html</loc>
+<loc>https://blog.enzokro.dev/jupyter/2020/02/20/test.html</loc>
 <lastmod>2020-02-20T00:00:00-06:00</lastmod>
 </url>
 <url>
-<loc>https://enzokro.dev/blog/about/</loc>
+<loc>https://blog.enzokro.dev/about/</loc>
 </url>
 <url>
-<loc>https://enzokro.dev/blog/</loc>
+<loc>https://blog.enzokro.dev/</loc>
 </url>
 <url>
-<loc>https://enzokro.dev/blog/search/</loc>
+<loc>https://blog.enzokro.dev/search/</loc>
 </url>
 <url>
-<loc>https://enzokro.dev/blog/categories/</loc>
+<loc>https://blog.enzokro.dev/categories/</loc>
 </url>
 </urlset>
