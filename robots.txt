@@ -1,1 +1,1 @@
-Sitemap: https://enzokro.github.io/clck10/sitemap.xml
+Sitemap: https://enzokro.dev/blog/sitemap.xml
