@@ -1,1 +1,1 @@
-Sitemap: https://blog.enzokro.dev/sitemap.xml
+Sitemap: https://enzokro.dev/sitemap.xml
