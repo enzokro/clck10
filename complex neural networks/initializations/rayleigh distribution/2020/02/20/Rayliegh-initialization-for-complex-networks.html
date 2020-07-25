@@ -109,7 +109,7 @@ window.onload = wrap_img;
        • <span class="read-time" title="Estimated read time">
     
     
-      13 min read
+      14 min read
     
 </span></p>
 
@@ -221,7 +221,7 @@ To start, we give some backgroud on weight initializations and why they are impo
 <h1 id="Background-on-initializations">
 <a class="anchor" href="#Background-on-initializations" aria-hidden="true"><span class="octicon octicon-link"></span></a>Background on initializations<a class="anchor-link" href="#Background-on-initializations"> </a>
 </h1>
-<p>In order to successfully train deep neural networks, it is crucial to properly initialize their weights. While initializations are now taken for granted, they were one of the key pieces that made it possible to train deep networks in the first place. The main insights about good weight initializations came from analyzing their variance affected the network gradients.<br>
+<p>In order to successfully train deep neural networks, it is crucial to properly initialize their weights. While initializations are now taken for granted, they were one of the key pieces that made it possible to train deep networks in the first place. The main insights about what makes good weight initializations came from analyzing their variance. Specifically, how the variance of the weights affects network gradients during backpropagation.<br>
 Great work by <a href="https://arxiv.org/pdf/1502.01852.pdf">He</a> and <a href="http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf">Glorot, Bengio</a> showed that the variance of weights should meet certain criteria if the gradients are to flow smoothly. Here, "smoothly" means that the gradients neither disappear (go to 0) nor explode (grow without bound) during training.<br>
 The best known initializations are now the defaults in popular deep learning libraries such as TensorFlow or pytorch. However, complex-valued deep networks are newer and not as well established.</p>
 
