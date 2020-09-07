@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.6.1 -->
+<title>How to normalize spectrograms | Chris Kroenke’s blog</title>
+<meta name="generator" content="Jekyll v4.0.0" />
+<meta property="og:title" content="How to normalize spectrograms" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Scaling spectrograms as inputs to neural networks." />
+<meta property="og:description" content="Scaling spectrograms as inputs to neural networks." />
+<link rel="canonical" href="https://enzokro.dev/normalizing_spectrums/2020/08/04/Normalizing-spectrograms-for-deep-learning.html" />
+<meta property="og:url" content="https://enzokro.dev/normalizing_spectrums/2020/08/04/Normalizing-spectrograms-for-deep-learning.html" />
+<meta property="og:site_name" content="Chris Kroenke’s blog" />
+<meta property="og:image" content="https://enzokro.dev/images/violin_spec.png" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2020-08-04T00:00:00-05:00" />
+<script type="application/ld+json">
+{"description":"Scaling spectrograms as inputs to neural networks.","mainEntityOfPage":{"@type":"WebPage","@id":"https://enzokro.dev/normalizing_spectrums/2020/08/04/Normalizing-spectrograms-for-deep-learning.html"},"@type":"BlogPosting","url":"https://enzokro.dev/normalizing_spectrums/2020/08/04/Normalizing-spectrograms-for-deep-learning.html","headline":"How to normalize spectrograms","dateModified":"2020-08-04T00:00:00-05:00","datePublished":"2020-08-04T00:00:00-05:00","image":"https://enzokro.dev/images/violin_spec.png","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/css/style.css"><link type="application/atom+xml" rel="alternate" href="https://enzokro.dev/feed.xml" title="Chris Kroenke's blog" /><link rel="shortcut icon" type="image/x-icon" href="/images/favicon.ico"><!-- Begin Jekyll SEO tag v2.6.1 -->
+<title>How to normalize spectrograms | Chris Kroenke’s blog</title>
+<meta name="generator" content="Jekyll v4.0.0" />
+<meta property="og:title" content="How to normalize spectrograms" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Scaling spectrograms as inputs to neural networks." />
+<meta property="og:description" content="Scaling spectrograms as inputs to neural networks." />
+<link rel="canonical" href="https://enzokro.dev/normalizing_spectrums/2020/08/04/Normalizing-spectrograms-for-deep-learning.html" />
+<meta property="og:url" content="https://enzokro.dev/normalizing_spectrums/2020/08/04/Normalizing-spectrograms-for-deep-learning.html" />
+<meta property="og:site_name" content="Chris Kroenke’s blog" />
+<meta property="og:image" content="https://enzokro.dev/images/violin_spec.png" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2020-08-04T00:00:00-05:00" />
+<script type="application/ld+json">
+{"description":"Scaling spectrograms as inputs to neural networks.","mainEntityOfPage":{"@type":"WebPage","@id":"https://enzokro.dev/normalizing_spectrums/2020/08/04/Normalizing-spectrograms-for-deep-learning.html"},"@type":"BlogPosting","url":"https://enzokro.dev/normalizing_spectrums/2020/08/04/Normalizing-spectrograms-for-deep-learning.html","headline":"How to normalize spectrograms","dateModified":"2020-08-04T00:00:00-05:00","datePublished":"2020-08-04T00:00:00-05:00","image":"https://enzokro.dev/images/violin_spec.png","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+
+<link href="https://unpkg.com/@primer/css/dist/primer.css" rel="stylesheet" />
+<link rel="stylesheet" href="//use.fontawesome.com/releases/v5.0.7/css/all.css"><link type="application/atom+xml" rel="alternate" href="https://enzokro.dev/feed.xml" title="Chris Kroenke's blog" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css" integrity="sha384-zB1R0rpPzHqg7Kpt0Aljp8JPLqbXI3bhnPWROx27a9N0Ll6ZP/+DiW/UqRcLbRjq" crossorigin="anonymous">
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-MML-AM_CHTML"> </script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js" integrity="sha384-y23I5Q6l+B6vatafAwxRu/0oK/79VlbSz7Q9aiSZUvyWYIYsd+qj+o24G5ZU2zJz" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js" integrity="sha384-kWPLUVMOks5AQFrykwIup5lo0m3iMkkHrD0uJ4H5cjeGihAutqP0yW0J6dpFiVkI" crossorigin="anonymous"></script>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement( document.body, {
+        delimiters: [
+            {left: "$$", right: "$$", display: true},
+            {left: "[%", right: "%]", display: true},
+            {left: "$", right: "$", display: false}
+        ]}
+        );
+    });
+    </script>
+
+
+<script>
+function wrap_img(fn) {
+    if (document.attachEvent ? document.readyState === "complete" : document.readyState !== "loading") {
+        var elements = document.querySelectorAll(".post img");
+        Array.prototype.forEach.call(elements, function(el, i) {
+            if (el.getAttribute("title") && (el.className != "emoji")) {
+                const caption = document.createElement('figcaption');
+                var node = document.createTextNode(el.getAttribute("title"));
+                caption.appendChild(node);
+                const wrapper = document.createElement('figure');
+                wrapper.className = 'image';
+                el.parentNode.insertBefore(wrapper, el);
+                el.parentNode.removeChild(el);
+                wrapper.appendChild(el);
+                wrapper.appendChild(caption);
+            }
+        });
+    } else { document.addEventListener('DOMContentLoaded', fn); }
+}
+window.onload = wrap_img;
+</script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function(){
+    // add link icon to anchor tags
+    var elem = document.querySelectorAll(".anchor-link")
+    elem.forEach(e => (e.innerHTML = '<i class="fas fa-link fa-xs"></i>'));
+    });
+</script>
+</head><body><header class="site-header">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Chris Kroenke&#39;s blog</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a><a class="page-link" href="/search/">Search</a><a class="page-link" href="/categories/">Tags</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">How to normalize spectrograms</h1><p class="page-description">Scaling spectrograms as inputs to neural networks.</p><p class="post-meta post-meta-title"><time class="dt-published" datetime="2020-08-04T00:00:00-05:00" itemprop="datePublished">
+        Aug 4, 2020
+      </time>
+       • <span class="read-time" title="Estimated read time">
+    
+    
+      11 min read
+    
+</span></p>
+
+    
+      <p class="category-tags"><i class="fas fa-tags category-tags-icon"></i></i> 
+      
+        <a class="category-tags-link" href="/categories/#normalizing_spectrums">normalizing_spectrums</a>
+        
+      
+      </p>
+    
+
+    
+      
+        <div class="pb-5 d-flex flex-wrap flex-justify-end">
+          <div class="px-2">
+
+    <a href="https://github.com/enzokro/clck10/tree/master/_notebooks/2020-08-04-Normalizing-spectrograms-for-deep-learning.ipynb" role="button" target="_blank">
+<img class="notebook-badge-image" src="/assets/badges/github.svg" alt="View On GitHub">
+    </a>
+</div>
+
+          <div class="px-2">
+    <a href="https://mybinder.org/v2/gh/enzokro/clck10/master?filepath=_notebooks%2F2020-08-04-Normalizing-spectrograms-for-deep-learning.ipynb" target="_blank">
+        <img class="notebook-badge-image" src="/assets/badges/binder.svg" alt="Open In Binder"/>
+    </a>
+</div>
+
+          <div class="px-2">
+    <a href="https://colab.research.google.com/github/enzokro/clck10/blob/master/_notebooks/2020-08-04-Normalizing-spectrograms-for-deep-learning.ipynb" target="_blank">
+        <img class="notebook-badge-image" src="/assets/badges/colab.svg" alt="Open In Colab"/>
+    </a>
+</div>
+        </div>
+      </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <ul class="section-nav">
+<li class="toc-entry toc-h1"><a href="#Introduction">Introduction </a></li>
+<li class="toc-entry toc-h1"><a href="#Background-on-initializations">Background on initializations </a></li>
+<li class="toc-entry toc-h1"><a href="#Sample-audio-dataset">Sample audio dataset </a>
+<ul>
+<li class="toc-entry toc-h2"><a href="#Importing-fastai-and-fastaudio-modules">Importing fastai and fastaudio modules </a></li>
+<li class="toc-entry toc-h2"><a href="#Downloading-the-ESC-50-dataset">Downloading the ESC-50 dataset </a></li>
+</ul>
+</li>
+<li class="toc-entry toc-h1"><a href="#Normalizing-waveforms">Normalizing waveforms </a></li>
+<li class="toc-entry toc-h1"><a href="#Extracting-spectrograms-from-audio">Extracting spectrograms from audio </a></li>
+<li class="toc-entry toc-h1"><a href="#How-do-we-normalize-spectrograms?">How do we normalize spectrograms? </a></li>
+<li class="toc-entry toc-h1"><a href="#Global-Spectrogram-Normalization">Global Spectrogram Normalization </a>
+<ul>
+<li class="toc-entry toc-h2"><a href="#Get-normalization-stats-from-training-dataset">Get normalization stats from training dataset </a></li>
+</ul>
+</li>
+<li class="toc-entry toc-h1"><a href="#Making-Normalization-transforms">Making Normalization transforms </a></li>
+<li class="toc-entry toc-h1"><a href="#Training-with-different-statistics">Training with different statistics </a>
+<ul>
+<li class="toc-entry toc-h2"><a href="#Performance-with-global-statistics">Performance with global statistics </a></li>
+<li class="toc-entry toc-h2"><a href="#Performance-with-channel-statistics">Performance with channel statistics </a></li>
+</ul>
+</li>
+<li class="toc-entry toc-h1"><a href="#Comparisons-without-normalization">Comparisons without normalization </a></li>
+</ul><!--
+#################################################
+### THIS FILE WAS AUTOGENERATED! DO NOT EDIT! ###
+#################################################
+# file to edit: _notebooks/2020-08-04-Normalizing-spectrograms-for-deep-learning.ipynb
+-->
+
+<div class="container" id="notebook-container">
+        
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+
+</div>
+    
+
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h1 id="Introduction">
+<a class="anchor" href="#Introduction" aria-hidden="true"><span class="octicon octicon-link"></span></a>Introduction<a class="anchor-link" href="#Introduction"> </a>
+</h1>
+<p>Audio is naturally a 1D signal
+Can transformed into 2D in several ways
+Most common is via short-time Fourier Transform (STFT)
+The STFT turns audio into a spectrogram: 2D representation in time and frequency
+Since now 2D, can think of as an image
+Means we can leverage all the great work from deep learning image classification</p>
+<p>Hard to overstate success of deep neural network for image classification.
+Previously challenging task dominated by handcrafted features
+Now features automatically learned from labeled data
+Possible due to improvements in datasets, algorithms, and compute</p>
+<p>But, one tricky issue using spectrogram inputs
+Data must be properly normalized when training neural network
+Else learning is difficult for the networks and could take a very long time or even diverge.
+A spectrogram, however, is fundamentally different from natural images.
+So how can we properly normalize spectrograms?</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h1 id="Background-on-initializations">
+<a class="anchor" href="#Background-on-initializations" aria-hidden="true"><span class="octicon octicon-link"></span></a>Background on initializations<a class="anchor-link" href="#Background-on-initializations"> </a>
+</h1>
+<p>well known how to scale images: stores as 0 to 255 range. Then converted to range 0 to 1
+Find the statistics that approximately center the data and give it unit variance 
+Spectrograms are created at a completely different range
+Usually analyzed in the log domain where the possible range is -inf to +inf. 
+In practice the values more constrained, but range is much larger than images (and negative).</p>
+<p>Several details in how to normalize audio pop up.
+How to normalize the waveform?
+How to normalize the spectrogram?
+How do we compute the normalization statistics?
+How to deal with rapidly changing audio?</p>
+<p>Will start with normalizing waveforms then move to spectrograms.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h1 id="Sample-audio-dataset">
+<a class="anchor" href="#Sample-audio-dataset" aria-hidden="true"><span class="octicon octicon-link"></span></a>Sample audio dataset<a class="anchor-link" href="#Sample-audio-dataset"> </a>
+</h1>
+<p>To make things practical, will apply normalization techniques to ongoing ESC-50 challenge hosted by fastai audio <a href="https://github.com/fastaudio/fastaudio">fastaudio</a> library.
+Challenge uses the ESC-50 dataset for sound classification
+ESC-50 has a wide range of sounds, will give us a good feel for how varied spectrograms can be</p>
+<p>The fastaudio library is rapidly changing and improving so instructions might be different, but will aim to keep post updated.
+Many lines below are based on the <a href="https://github.com/fastaudio/Audio-Competition/blob/master/ESC-50-baseline-1Fold.ipynb">baseline results notebook</a> for convenience.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="Importing-fastai-and-fastaudio-modules">
+<a class="anchor" href="#Importing-fastai-and-fastaudio-modules" aria-hidden="true"><span class="octicon octicon-link"></span></a>Importing <code>fastai</code> and <code>fastaudio</code> modules<a class="anchor-link" href="#Importing-fastai-and-fastaudio-modules"> </a>
+</h2>
+</div>
+</div>
+</div>
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">fastai.vision.all</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">fastaudio.core.all</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">fastaudio.augment.all</span> <span class="kn">import</span> <span class="o">*</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="Downloading-the-ESC-50-dataset">
+<a class="anchor" href="#Downloading-the-ESC-50-dataset" aria-hidden="true"><span class="octicon octicon-link"></span></a>Downloading the ESC-50 dataset<a class="anchor-link" href="#Downloading-the-ESC-50-dataset"> </a>
+</h2>
+</div>
+</div>
+</div>
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># already included in fastaudio, can download with fastai's `untar_data`</span>
+<span class="n">path</span> <span class="o">=</span> <span class="n">untar_data</span><span class="p">(</span><span class="n">URLs</span><span class="o">.</span><span class="n">ESC50</span><span class="p">)</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>The ESC-50 data is inside of an <code>audio</code> folder. 
+Can look inside to find many <code>.wav</code> files.</p>
+
+</div>
+</div>
+</div>
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">wavs</span> <span class="o">=</span> <span class="p">(</span><span class="n">path</span><span class="o">/</span><span class="s2">"audio"</span><span class="p">)</span><span class="o">.</span><span class="n">ls</span><span class="p">()</span>
+<span class="n">wavs</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>We use the first waveform as an example for normalization. Can load an audio file using the <code>create</code> function of the <code>AudioTensor</code> class in <code>fastaudio</code>. This class wraps a <code>torch.Tensor</code> with added syntactic sugar.</p>
+
+</div>
+</div>
+</div>
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># create an AudioTensor from a file path</span>
+<span class="n">sample</span> <span class="o">=</span> <span class="n">AudioTensor</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">wavs</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>Thanks to functionality in the <code>AudioTensor</code> class we can easily plot and even listen to our sample!</p>
+
+</div>
+</div>
+</div>
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">sample</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">sample</span><span class="o">.</span><span class="n">hear</span><span class="p">()</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>Let's start by normalizing this waveform.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h1 id="Normalizing-waveforms">
+<a class="anchor" href="#Normalizing-waveforms" aria-hidden="true"><span class="octicon octicon-link"></span></a>Normalizing waveforms<a class="anchor-link" href="#Normalizing-waveforms"> </a>
+</h1>
+<p>The first step is normalizing the audio waveform.
+We give it a mean of zero and unit variance as in the usual way:</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>
+$$\text{norm_audio} = \frac{\text{audio} - mean(\text{audio})}{std(\text{audio})} $$
+</p>
+
+</div>
+</div>
+</div>
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># normalize the waveform</span>
+<span class="n">norm_sample</span> <span class="o">=</span> <span class="p">(</span><span class="n">sample</span> <span class="o">-</span> <span class="n">sample</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="o">/</span> <span class="n">sample</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>Let's check if the mean is roughly 0 and the variance is roughly one</p>
+
+</div>
+</div>
+</div>
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># checking if normalization worked</span>
+<span class="n">norm_sample</span><span class="o">.</span><span class="n">mean</span><span class="p">(),</span><span class="n">norm_sample</span><span class="o">.</span><span class="n">var</span><span class="p">()</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>Success! Let's wrap it back an <code>AudioTensor</code> for convenience. The sampling rate did not change so we pass in the sampling rate from the unnormalized waveform.</p>
+
+</div>
+</div>
+</div>
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">norm_sample</span> <span class="o">=</span> <span class="n">AudioTensor</span><span class="p">(</span><span class="n">norm_saple</span><span class="p">,</span> <span class="n">sr</span><span class="o">=</span><span class="n">sample</span><span class="o">.</span><span class="n">sr</span><span class="p">)</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>Now that we normalized the audio we can convert it to a spectrogram.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h1 id="Extracting-spectrograms-from-audio">
+<a class="anchor" href="#Extracting-spectrograms-from-audio" aria-hidden="true"><span class="octicon octicon-link"></span></a>Extracting spectrograms from audio<a class="anchor-link" href="#Extracting-spectrograms-from-audio"> </a>
+</h1>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>We can now extract a spectrogram from the normalized audio.
+The fastaudio library has a helpful way of converting <code>AudioTensor</code>s into Spectrograms by wrapping some parts of <code>torchaudio</code>.</p>
+
+</div>
+</div>
+</div>
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># create a fastai Transform that converts audio into spectrograms</span>
+<span class="n">cfg</span> <span class="o">=</span> <span class="n">AudioConfig</span><span class="o">.</span><span class="n">BasicSpectrogram</span><span class="p">()</span>
+<span class="n">audio2spec</span> <span class="o">=</span> <span class="n">AudioToSpec</span><span class="o">.</span><span class="n">from_cfg</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>The details of the spectrogram are not directly relevant here.
+But you can take a look at the <a href="https://pytorch.org/audio/_modules/torchaudio/functional.html#spectrogram">spectrogram source code</a> to see it basically does pre and post processing around a <a href="https://pytorch.org/docs/stable/generated/torch.stft.html">torch.stft</a> call.
+We can now transform our audio into a spectrogram and show it.</p>
+
+</div>
+</div>
+</div>
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># extract and view our spectrogram</span>
+<span class="n">spec</span> <span class="o">=</span> <span class="n">audio2spec</span><span class="p">(</span><span class="n">norm_sample</span><span class="p">)</span>
+<span class="n">spec</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>This is a good time to compare the shapes of the audio vs. spectrogram to see how it went from one to two dimensions.</p>
+
+</div>
+</div>
+</div>
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="sa">f</span><span class="s1">'Audio shape: </span><span class="si">{</span><span class="n">norm_sample</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s1"> | Spectrogram shape: </span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s1">'</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h1 id="How-do-we-normalize-spectrograms?">
+<a class="anchor" href="#How-do-we-normalize-spectrograms?" aria-hidden="true"><span class="octicon octicon-link"></span></a>How do we normalize spectrograms?<a class="anchor-link" href="#How-do-we-normalize-spectrograms?"> </a>
+</h1>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>As stated in the introduction, a spectrogram is fundamentally different from an image.</p>
+<p>In an image, both dimensions are in the spatial domain and have the same units.
+For a color image, we have three channels (RGB) and we normalize each one.
+If the image has a single channel (grayscale) then we normalize it instead.
+Given that both dimensions are in the same scale and domain same, and the general layout of natural images, it makes sense to normalize each channel with a single, global value.</p>
+<p>In a spectrogram, one dimension represents time and the other represents frequency.
+Different quantities, scales, and sizes.
+Frequency dimension given by choice of FFT size. Sets our spectral resolution.
+Time dimension given by length of our signal, FFT size, and window overlap. Sets our temporal resolution.</p>
+<p>However, the spectrogram also introduces the notion of a different type of channel.
+This makes "channel" an overloaded term for our purposes but it is still a crucial piece of the puzzle. 
+The spectrogram transform can be interpreted as a "channelizer".
+That is a fancy way to say that it takes the continuous frequency spectrum of our signal and chops it up into discrete bins, or channels. For example, consider a signal sampled at 16 kHz (typical for audio) where we take an STFT of size 512. Our spectrogram will have 512 channels where each one has a "bandwidth" of $$16 \ \text{kHz} \ \ / \ \ 512 \ \text{bins} = 31.25 \ \text{Hz per bin}$$</p>
+<p>Even though these spectrum channels are different from the channels in an image, it raises the question: should we (or can we?) normalize an entire spectrum "image" with a single, global value? Or do we need to normalize each channel, as is done with images?</p>
+<p>There is no clear answer here, and your approach will likely depend both on the specifics of your problem and where your system will be deployed.
+For example, if your are building a system that will be deployed in a similar environment as the training one, then it might make more sense to normalize by channels.
+Your channel-based normalization statistics will follow the average noise floor and activity of the training data.
+This motivation hold if you expect roughly the same patterns and distributions of activity once the system is deployed.
+However, it will be critical to monitor the deployed environment and update the statistics as needed, else you slowly shift out of domain.</p>
+<p>If your system will instead be used in a completely different environment, of which you have no knowledge, then the global statistics could be a better fit. While not as technically sound, your model won't be as surprised by radically new activity across different channels.</p>
+<p>Lastly, we also have issue of Transfer Learning. In Transfer Learning it is best-practice to normalize the new dataset with the statistics from the old dataset. In most cases that means normalizing with ImageNet statistics.
+So if you are doing transfer learning, the easiest approach will be to use original stats. 
+If your dataset is large enough that you are training from scratch, then the above applies.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h1 id="Global-Spectrogram-Normalization">
+<a class="anchor" href="#Global-Spectrogram-Normalization" aria-hidden="true"><span class="octicon octicon-link"></span></a>Global Spectrogram Normalization<a class="anchor-link" href="#Global-Spectrogram-Normalization"> </a>
+</h1>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>We will start by using a single, global value to normalize the spectrograms
+This is the same way images are normalized
+Will treat spectrogram as single-channel image
+Need to find a single mean and standard deviation to apply to to each image</p>
+<p>Get it from training dataset.
+This means stepping through our mini-batches and finding the mean and standard deviation for each batch.
+Then, accumulate and average it over our training samples to get a "global" statistic. 
+First, we need a way to accumulate these statistics over mini-batches. Will borrow from the very helpful guide <a href="http://notmatthancock.github.io/2017/03/23/simple-batch-stat-updates.html">here</a></p>
+<p>One small detail: if your training dataset is large enough, you do not need to iterate through the entire thing.
+It is often enough to sample only 10 to 20% of the samples for accurate statistics.
+Since ESC-50 is small enough, we get statistics from the whole set.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>The class below tracks our global mean and standard deviation across mini-batches.</p>
+
+</div>
+</div>
+</div>
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">class</span> <span class="nc">StatsRecorder</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">red_dims</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">)):</span>
+        <span class="sd">"""Accumulates normalization statistics across mini-batches.</span>
+<span class="sd">        ref: http://notmatthancock.github.io/2017/03/23/simple-batch-stat-updates.html</span>
+<span class="sd">        """</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">red_dims</span> <span class="o">=</span> <span class="n">red_dims</span> <span class="c1"># which mini-batch dimensions to average over</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nobservations</span> <span class="o">=</span> <span class="mi">0</span>   <span class="c1"># running number of seen observations</span>
+
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="sd">"""</span>
+<span class="sd">        data: ndarray, shape (nobservations, ndimensions)</span>
+<span class="sd">        """</span>
+        <span class="c1"># initialize stats and dimensions on first batch</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">nobservations</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mean</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">red_dims</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">std</span>  <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">std</span> <span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">red_dims</span><span class="p">,</span><span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">nobservations</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ndimensions</span>   <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ndimensions</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">'Data dims don'</span><span class="n">t</span> <span class="n">match</span> <span class="n">prev</span> <span class="n">observations</span><span class="o">.</span><span class="s1">')</span>
+            
+            <span class="c1"># find mean of new mini batch</span>
+            <span class="n">newmean</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">red_dims</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">newstd</span>  <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">red_dims</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            
+            <span class="c1"># update number of observations</span>
+            <span class="n">m</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nobservations</span> <span class="o">*</span> <span class="mf">1.0</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="c1"># update running statistics</span>
+            <span class="n">tmp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mean</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mean</span> <span class="o">=</span> <span class="n">m</span><span class="o">/</span><span class="p">(</span><span class="n">m</span><span class="o">+</span><span class="n">n</span><span class="p">)</span><span class="o">*</span><span class="n">tmp</span> <span class="o">+</span> <span class="n">n</span><span class="o">/</span><span class="p">(</span><span class="n">m</span><span class="o">+</span><span class="n">n</span><span class="p">)</span><span class="o">*</span><span class="n">newmean</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">std</span>  <span class="o">=</span> <span class="n">m</span><span class="o">/</span><span class="p">(</span><span class="n">m</span><span class="o">+</span><span class="n">n</span><span class="p">)</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">std</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">n</span><span class="o">/</span><span class="p">(</span><span class="n">m</span><span class="o">+</span><span class="n">n</span><span class="p">)</span><span class="o">*</span><span class="n">newstd</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span>\
+                        <span class="n">m</span><span class="o">*</span><span class="n">n</span><span class="o">/</span><span class="p">(</span><span class="n">m</span><span class="o">+</span><span class="n">n</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">tmp</span> <span class="o">-</span> <span class="n">newmean</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">std</span>  <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">std</span><span class="p">)</span>
+                                 
+            <span class="c1"># update total number of seen samples</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">nobservations</span> <span class="o">+=</span> <span class="n">n</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">By</span> <span class="n">default</span><span class="p">,</span> <span class="n">it</span> <span class="n">will</span> <span class="n">average</span> <span class="n">the</span> <span class="n">statistics</span> <span class="n">over</span> <span class="n">grayscale</span> <span class="ow">or</span> <span class="n">RGB</span> <span class="n">dimensions</span> <span class="k">for</span> <span class="n">images</span><span class="o">.</span> 
+<span class="n">The</span> <span class="n">red_dims</span> <span class="n">might</span> <span class="n">look</span> <span class="n">familiar</span> <span class="kn">from</span> <span class="nn">other</span> <span class="n">Computer</span> <span class="n">Vision</span> <span class="n">normalization</span> <span class="n">code</span><span class="o">.</span> 
+<span class="n">Later</span> <span class="n">on</span> <span class="n">we</span> <span class="n">will</span> <span class="n">normalize</span> <span class="n">by</span> <span class="n">spectrogram</span> <span class="n">channels</span> <span class="n">by</span> <span class="n">passing</span> <span class="n">a</span> <span class="n">different</span> <span class="err">`</span><span class="n">red_dims</span><span class="err">`</span><span class="o">.</span> 
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="Get-normalization-stats-from-training-dataset">
+<a class="anchor" href="#Get-normalization-stats-from-training-dataset" aria-hidden="true"><span class="octicon octicon-link"></span></a>Get normalization stats from training dataset<a class="anchor-link" href="#Get-normalization-stats-from-training-dataset"> </a>
+</h2>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>Now we have to iterate through our training dataset and find the global statistics. 
+Setup follows the fastaudio ESC-50 baseline.</p>
+
+</div>
+</div>
+</div>
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">path</span><span class="o">/</span><span class="s2">"meta"</span><span class="o">/</span><span class="s2">"esc50.csv"</span><span class="p">)</span>
+<span class="n">df</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+
+<span class="k">def</span> <span class="nf">CrossValidationSplitter</span><span class="p">(</span><span class="n">col</span><span class="o">=</span><span class="s1">'fold'</span><span class="p">,</span> <span class="n">fold</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="s2">"Split `items` (supposed to be a dataframe) by fold in `col`"</span>
+    <span class="k">def</span> <span class="nf">_inner</span><span class="p">(</span><span class="n">o</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">),</span> <span class="s2">"ColSplitter only works when your items are a pandas DataFrame"</span>
+        <span class="n">col_values</span> <span class="o">=</span> <span class="n">o</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span><span class="n">col</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">col</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="k">else</span> <span class="n">o</span><span class="p">[</span><span class="n">col</span><span class="p">]</span>
+        <span class="n">valid_idx</span> <span class="o">=</span> <span class="p">(</span><span class="n">col_values</span> <span class="o">==</span> <span class="n">fold</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">'bool'</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">IndexSplitter</span><span class="p">(</span><span class="n">mask2idxs</span><span class="p">(</span><span class="n">valid_idx</span><span class="p">))(</span><span class="n">o</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">_inner</span>
+
+<span class="n">auds</span> <span class="o">=</span> <span class="n">DataBlock</span><span class="p">(</span><span class="n">blocks</span><span class="o">=</span><span class="p">(</span><span class="n">AudioBlock</span><span class="p">,</span> <span class="n">CategoryBlock</span><span class="p">),</span>  
+                 <span class="n">get_x</span><span class="o">=</span><span class="n">ColReader</span><span class="p">(</span><span class="s2">"filename"</span><span class="p">,</span> <span class="n">pref</span><span class="o">=</span><span class="n">path</span><span class="o">/</span><span class="s2">"audio"</span><span class="p">),</span> 
+                 <span class="n">splitter</span><span class="o">=</span><span class="n">CrossValidationSplitter</span><span class="p">(</span><span class="n">fold</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+                 <span class="n">batch_tfms</span> <span class="o">=</span> <span class="p">[</span><span class="n">a2s</span><span class="p">],</span>
+                 <span class="n">get_y</span><span class="o">=</span><span class="n">ColReader</span><span class="p">(</span><span class="s2">"category"</span><span class="p">))</span>
+<span class="n">dbunch</span> <span class="o">=</span> <span class="n">auds</span><span class="o">.</span><span class="n">dataloaders</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">bs</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
+<span class="n">dbunch</span><span class="o">.</span><span class="n">show_batch</span><span class="p">()</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>Next we create our recorder and find the needed normalization statistics.</p>
+
+</div>
+</div>
+</div>
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">global_stats</span> <span class="o">=</span> <span class="n">StatsRecorder</span><span class="p">()</span>
+<span class="k">for</span> <span class="n">idx</span><span class="p">,</span><span class="n">o</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">dbunch</span><span class="o">.</span><span class="n">train</span><span class="p">)):</span>
+    <span class="n">x</span><span class="p">,</span><span class="n">y</span> <span class="o">=</span> <span class="n">o</span>
+    <span class="n">global_stats</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+<span class="n">global_mean</span><span class="p">,</span><span class="n">global_std</span> <span class="o">=</span> <span class="n">global_stats</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span><span class="n">global_stats</span><span class="o">.</span><span class="n">std</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>Can check they are the same shape as typical grayscale normalization stats. With a single channel, we expect shape: <code>[1,1,1,1]</code>.</p>
+
+</div>
+</div>
+</div>
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">mean</span><span class="p">,</span><span class="n">mean</span><span class="o">.</span><span class="n">shape</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">std</span><span class="p">,</span><span class="n">std</span><span class="o">.</span><span class="n">shape</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>First, let's repeat this with new <code>red_dims</code> argument to find normalization stats for each spectrogram channel. The new red_dims tells the recorder to average over everything except the frequency axis.</p>
+
+</div>
+</div>
+</div>
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">channel_stats</span> <span class="o">=</span> <span class="n">StatsRecorder</span><span class="p">(</span><span class="n">red_dims</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span>
+<span class="k">for</span> <span class="n">idx</span><span class="p">,</span><span class="n">o</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">dbunch</span><span class="o">.</span><span class="n">train</span><span class="p">)):</span>
+    <span class="n">x</span><span class="p">,</span><span class="n">y</span> <span class="o">=</span> <span class="n">o</span>
+    <span class="n">channel_stats</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+<span class="n">channel_mean</span><span class="p">,</span><span class="n">channel_std</span> <span class="o">=</span> <span class="n">channel_stats</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span><span class="n">channel_stats</span><span class="o">.</span><span class="n">std</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h1 id="Making-Normalization-transforms">
+<a class="anchor" href="#Making-Normalization-transforms" aria-hidden="true"><span class="octicon octicon-link"></span></a>Making Normalization transforms<a class="anchor-link" href="#Making-Normalization-transforms"> </a>
+</h1>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>First need a transform to normalize the audio as shown in the first section</p>
+
+</div>
+</div>
+</div>
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">class</span> <span class="nc">AudioNormalize</span><span class="p">(</span><span class="n">Transform</span><span class="p">):</span>
+    <span class="s2">"Normalizes a single audio tensor."</span>
+    <span class="k">def</span> <span class="nf">encodes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span><span class="n">AudioTensor</span><span class="p">):</span> <span class="k">return</span> <span class="p">(</span><span class="n">x</span><span class="o">-</span><span class="n">x</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="o">/</span> <span class="n">x</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>To normalize our spectrogram batches, we can reuse fastai's existing Normalize with different arguments</p>
+
+</div>
+</div>
+</div>
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">GlobalSpecNorm</span>  <span class="o">=</span> <span class="n">Normalize</span><span class="p">(</span><span class="n">global_mean</span><span class="p">,</span>  <span class="n">global_std</span><span class="p">,</span>  <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span>
+<span class="n">ChannelSpecNorm</span> <span class="o">=</span> <span class="n">Normalize</span><span class="p">(</span><span class="n">channel_mean</span><span class="p">,</span> <span class="n">channel_std</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h1 id="Training-with-different-statistics">
+<a class="anchor" href="#Training-with-different-statistics" aria-hidden="true"><span class="octicon octicon-link"></span></a>Training with different statistics<a class="anchor-link" href="#Training-with-different-statistics"> </a>
+</h1>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>Follow the fastaudio baseline, and train each type of normalization for 10 epochs. 
+Take averaged accuracy over five runs.</p>
+
+</div>
+</div>
+</div>
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">epochs</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="n">num_runs</span> <span class="o">=</span> <span class="mi">5</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="Performance-with-global-statistics">
+<a class="anchor" href="#Performance-with-global-statistics" aria-hidden="true"><span class="octicon octicon-link"></span></a>Performance with global statistics<a class="anchor-link" href="#Performance-with-global-statistics"> </a>
+</h2>
+</div>
+</div>
+</div>
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">auds</span> <span class="o">=</span> <span class="n">DataBlock</span><span class="p">(</span><span class="n">blocks</span><span class="o">=</span><span class="p">(</span><span class="n">AudioBlock</span><span class="p">,</span> <span class="n">CategoryBlock</span><span class="p">),</span>  
+                 <span class="n">get_x</span><span class="o">=</span><span class="n">ColReader</span><span class="p">(</span><span class="s2">"filename"</span><span class="p">,</span> <span class="n">pref</span><span class="o">=</span><span class="n">path</span><span class="o">/</span><span class="s2">"audio"</span><span class="p">),</span> 
+                 <span class="n">splitter</span><span class="o">=</span><span class="n">CrossValidationSplitter</span><span class="p">(</span><span class="n">fold</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+                 <span class="n">item_tfms</span> <span class="o">=</span> <span class="p">[</span><span class="n">AudioNormalize</span><span class="p">],</span> 
+                 <span class="n">batch_tfms</span> <span class="o">=</span> <span class="p">[</span><span class="n">a2s</span><span class="p">,</span> <span class="n">GlobalSpecNorm</span><span class="p">],</span>
+                 <span class="n">get_y</span><span class="o">=</span><span class="n">ColReader</span><span class="p">(</span><span class="s2">"category"</span><span class="p">))</span>
+<span class="n">dbunch</span> <span class="o">=</span> <span class="n">auds</span><span class="o">.</span><span class="n">dataloaders</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">bs</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
+
+
+<span class="n">accuracies</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_runs</span><span class="p">):</span>
+    <span class="c1"># make cnn learner</span>
+    <span class="n">learn</span> <span class="o">=</span> <span class="n">cnn_learner</span><span class="p">(</span><span class="n">dbunch</span><span class="p">,</span> 
+                        <span class="n">resnet18</span><span class="p">,</span> 
+                        <span class="n">config</span><span class="o">=</span><span class="n">cnn_config</span><span class="p">(</span><span class="n">n_in</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+                        <span class="n">loss_fn</span><span class="o">=</span><span class="n">CrossEntropyLossFlat</span><span class="p">,</span>
+                        <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">accuracy</span><span class="p">])</span>
+    <span class="c1"># fit one cycle for given epochs</span>
+    <span class="n">learn</span><span class="o">.</span><span class="n">fit_one_cycle</span><span class="p">(</span><span class="n">epochs</span><span class="p">)</span>
+    <span class="n">accuracies</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">recorder</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">accuracies</span><span class="p">)</span> <span class="o">/</span> <span class="n">num_runs</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Average accuracy for "global" normalization: </span><span class="si">{</span><span class="nb">sum</span><span class="p">(</span><span class="n">accuracies</span><span class="p">)</span> <span class="o">/</span> <span class="n">num_runs</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="Performance-with-channel-statistics">
+<a class="anchor" href="#Performance-with-channel-statistics" aria-hidden="true"><span class="octicon octicon-link"></span></a>Performance with channel statistics<a class="anchor-link" href="#Performance-with-channel-statistics"> </a>
+</h2>
+</div>
+</div>
+</div>
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">auds</span> <span class="o">=</span> <span class="n">DataBlock</span><span class="p">(</span><span class="n">blocks</span><span class="o">=</span><span class="p">(</span><span class="n">AudioBlock</span><span class="p">,</span> <span class="n">CategoryBlock</span><span class="p">),</span>  
+                 <span class="n">get_x</span><span class="o">=</span><span class="n">ColReader</span><span class="p">(</span><span class="s2">"filename"</span><span class="p">,</span> <span class="n">pref</span><span class="o">=</span><span class="n">path</span><span class="o">/</span><span class="s2">"audio"</span><span class="p">),</span> 
+                 <span class="n">splitter</span><span class="o">=</span><span class="n">CrossValidationSplitter</span><span class="p">(</span><span class="n">fold</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+                 <span class="n">item_tfms</span> <span class="o">=</span> <span class="p">[</span><span class="n">AudioNormalize</span><span class="p">],</span> 
+                 <span class="n">batch_tfms</span> <span class="o">=</span> <span class="p">[</span><span class="n">a2s</span><span class="p">,</span> <span class="n">ChannelSpecNorm</span><span class="p">],</span>
+                 <span class="n">get_y</span><span class="o">=</span><span class="n">ColReader</span><span class="p">(</span><span class="s2">"category"</span><span class="p">))</span>
+<span class="n">dbunch</span> <span class="o">=</span> <span class="n">auds</span><span class="o">.</span><span class="n">dataloaders</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">bs</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
+
+
+<span class="n">accuracies</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_runs</span><span class="p">):</span>
+    <span class="c1"># make cnn learner</span>
+    <span class="n">learn</span> <span class="o">=</span> <span class="n">cnn_learner</span><span class="p">(</span><span class="n">dbunch</span><span class="p">,</span> 
+                        <span class="n">resnet18</span><span class="p">,</span> 
+                        <span class="n">config</span><span class="o">=</span><span class="n">cnn_config</span><span class="p">(</span><span class="n">n_in</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+                        <span class="n">loss_fn</span><span class="o">=</span><span class="n">CrossEntropyLossFlat</span><span class="p">,</span>
+                        <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">accuracy</span><span class="p">])</span>
+    <span class="c1"># fit one cycle for given epochs</span>
+    <span class="n">learn</span><span class="o">.</span><span class="n">fit_one_cycle</span><span class="p">(</span><span class="n">epochs</span><span class="p">)</span>
+    <span class="n">accuracies</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">recorder</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Average accuracy for "channel" normalization: </span><span class="si">{</span><span class="nb">sum</span><span class="p">(</span><span class="n">accuracies</span><span class="p">)</span> <span class="o">/</span> <span class="n">num_runs</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h1 id="Comparisons-without-normalization">
+<a class="anchor" href="#Comparisons-without-normalization" aria-hidden="true"><span class="octicon octicon-link"></span></a>Comparisons without normalization<a class="anchor-link" href="#Comparisons-without-normalization"> </a>
+</h1>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>The above was a nice exercise and more theoretically sound that no normalization.
+But it it actually help?
+Let's compare without any normalization at all.</p>
+
+</div>
+</div>
+</div>
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">auds</span> <span class="o">=</span> <span class="n">DataBlock</span><span class="p">(</span><span class="n">blocks</span><span class="o">=</span><span class="p">(</span><span class="n">AudioBlock</span><span class="p">,</span> <span class="n">CategoryBlock</span><span class="p">),</span>  
+                 <span class="n">get_x</span><span class="o">=</span><span class="n">ColReader</span><span class="p">(</span><span class="s2">"filename"</span><span class="p">,</span> <span class="n">pref</span><span class="o">=</span><span class="n">path</span><span class="o">/</span><span class="s2">"audio"</span><span class="p">),</span> 
+                 <span class="n">splitter</span><span class="o">=</span><span class="n">CrossValidationSplitter</span><span class="p">(</span><span class="n">fold</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> 
+                 <span class="n">batch_tfms</span> <span class="o">=</span> <span class="p">[</span><span class="n">a2s</span><span class="p">],</span>
+                 <span class="n">get_y</span><span class="o">=</span><span class="n">ColReader</span><span class="p">(</span><span class="s2">"category"</span><span class="p">))</span>
+<span class="n">dbunch</span> <span class="o">=</span> <span class="n">auds</span><span class="o">.</span><span class="n">dataloaders</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">bs</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
+
+<span class="n">accuracies</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_runs</span><span class="p">):</span>
+    <span class="n">learn</span> <span class="o">=</span> <span class="n">cnn_learner</span><span class="p">(</span><span class="n">dbunch</span><span class="p">,</span> 
+                    <span class="n">resnet18</span><span class="p">,</span> 
+                    <span class="n">normalize</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="n">config</span><span class="o">=</span><span class="n">cnn_config</span><span class="p">(</span><span class="n">n_in</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+                    <span class="n">loss_fn</span><span class="o">=</span><span class="n">CrossEntropyLossFlat</span><span class="p">,</span>
+                    <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">accuracy</span><span class="p">]</span>                 
+                    <span class="p">)</span>
+    <span class="n">learn</span><span class="o">.</span><span class="n">fit_one_cycle</span><span class="p">(</span><span class="n">epochs</span><span class="p">)</span>
+    <span class="n">accuracies</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">recorder</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Average accuracy without any normalization: </span><span class="si">{</span><span class="nb">sum</span><span class="p">(</span><span class="n">accuracies</span><span class="p">)</span> <span class="o">/</span> <span class="n">num_runs</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+
+</div>
+</div>
+</div>
+</div>
+
+
+
+  </div><!-- from https://github.com/utterance/utterances -->
+<script src="https://utteranc.es/client.js"
+        repo="enzokro/clck10"
+        issue-term="title"
+        label="blogpost-comment"
+        theme="github-light"
+        crossorigin="anonymous"
+        async>
+</script><a class="u-url" href="/normalizing_spectrums/2020/08/04/Normalizing-spectrograms-for-deep-learning.html" hidden></a>
+</article>
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col">
+        <p class="feed-subscribe">
+          <a href="/feed.xml">
+            <svg class="svg-icon orange">
+              <use xlink:href="/assets/minima-social-icons.svg#rss"></use>
+            </svg><span>Subscribe</span>
+          </a>
+        </p>
+      </div>
+      <div class="footer-col">
+        <p>DSP, RF, and ML posts</p>
+      </div>
+    </div>
+
+    <div class="social-links"><ul class="social-media-list"><li><a rel="me" href="https://github.com/enzokro" title="enzokro"><svg class="svg-icon grey"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg></a></li><li><a rel="me" href="https://twitter.com/clck10" title="clck10"><svg class="svg-icon grey"><use xlink:href="/assets/minima-social-icons.svg#twitter"></use></svg></a></li></ul>
+</div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>
