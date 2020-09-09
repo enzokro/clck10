@@ -109,7 +109,7 @@ window.onload = wrap_img;
        • <span class="read-time" title="Estimated read time">
     
     
-      29 min read
+      30 min read
     
 </span></p>
 
@@ -962,8 +962,7 @@ The range of the log function is from $-\infty$ to $+\infty$ which is clearly di
 <p>There is no clear answer here, and the final approach will likely depend both on how the system will be used. For example, if your are building a system that will be deployed in a environment similar to the training one, then it might make more sense to normalize by spectrogram channels. This is because the channel-based statistics will follow the average noise floor and activity of the training data. If roughly the same patterns and distributions of activity exist in the deployment environment these statistics will likely be a good fit. However, it is critical to monitor the deployed environment and update the statistics as needed to avoid shifting out of domain.</p>
 <p>If the system will instead be used in a completely different environment, of which you have no knowledge, then the global statistics might be a better fit. While not as technically sound, your model will hopefully be less surprised by radically new activity in the channels.</p>
 <p>Lastly, we also have issue of Transfer Learning. In Transfer Learning it is best-practice to normalize the new dataset with the statistics from the old dataset. In most cases that means normalizing with ImageNet statistics.
-So if you are doing transfer learning, the easiest approach will be to use original statistics. 
-If your dataset is large enough that you are training from scratch, then the above applies.</p>
+So if you are doing transfer learning, the easiest approach will be to use original statistics. We avoid this in this post and instead train from scratch. The reason is that pre-trained models trained on images are used to a completely different range and scale than spectrograms. And the the main idea here is learning our own scaling.</p>
 
 </div>
 </div>
