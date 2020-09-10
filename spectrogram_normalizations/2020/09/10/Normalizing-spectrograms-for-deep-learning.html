@@ -173,8 +173,8 @@ window.onload = wrap_img;
 <ul>
 <li class="toc-entry toc-h2"><a href="#Training-helpers">Training helpers </a></li>
 <li class="toc-entry toc-h2"><a href="#Baseline-performance">Baseline performance </a></li>
-<li class="toc-entry toc-h2"><a href="#Performance-with-global-statistics">Performance with global statistics </a></li>
-<li class="toc-entry toc-h2"><a href="#Performance-with-channel-statistics">Performance with channel statistics </a></li>
+<li class="toc-entry toc-h2"><a href="#Performance-with-global-normalization">Performance with global normalization </a></li>
+<li class="toc-entry toc-h2"><a href="#Performance-with-channel-normalization">Performance with channel normalization </a></li>
 </ul>
 </li>
 <li class="toc-entry toc-h1"><a href="#Discussion">Discussion </a></li>
@@ -246,7 +246,7 @@ For natural images, normalization uses an estimated mean ($\mu$) and standard de
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Now we can describe what makes spectrograms different from natural images. We start with a high-level description of images and their normalization, then do the same for spectrograms. A quick recap of the steps to compute a spectrogram further shows how different they are from images. This recap naturally leads to a specific normalization for spectrogram features. Finally, we talk about Transfer Learning and why we avoid it in this post.</p>
+<p>Now we can describe what makes spectrograms different from natural images. We start with a high-level overview of images and their normalization, then do the same for spectrograms. A quick recap of the steps to compute a spectrogram further shows how different they are from images. This recap naturally leads to a specific normalization for spectrogram features. Finally, we talk about Transfer Learning and why we avoid it in this post.</p>
 <p>In an image, both axes (height and width) are in the spatial domain and at the same scale. Images are stored as integers in the range of <code>[0, 255]</code>. To normalize them we first divide all pixels by 255, the max possible value, to map them into the range <code>[0, 1]</code>.  Then, we find the statistics that approximately center the data with a mean of $0$ and a variance of $1$. The three RGB channels in a color image are normalized separately. If an image is greyscale then we normalize its single channel instead.</p>
 <p>The axes in a spectrogram are from different domains than the axes in an image. In a spectrogram, the horizontal axis represents time and the vertical axis represents frequency. Each of these quantities has its own scale. The frequency dimension is determined by the size of the FFT window. The time dimension is set by the total length of the signal, the size of the FFT window, and the hop size of the window. You can check the documentation of the <a href="https://pytorch.org/docs/stable/generated/torch.stft.html">torch.stft</a> function for more specifics on how each axis is determined.</p>
 <p>To be more specific, a spectrogram is actually the log of the power spectrum. Below we give a quick recap of how the spectrogram is computed to show how much it differs from images.</p>
@@ -256,13 +256,13 @@ $$\text{spectrum} = \text{STFT(x)}$$
 
 We are more interested in the energy or power of the signal, so we take the absolute value of the STFT and square it:<br>
 $$\text{power_spectrum} = |\text{STFT(x)}|^2$$ 
-We cannot directly use the power spectrum as an input because it has a few strong peaks and many small values. For details on exactly why this is problem check this <a href="https://danielsdiscoveries.wordpress.com/2017/09/29/spectrogram-input-normalisation-for-neural-networks/">fantastic post</a> that also deals with spectrogram normalization. 
-Taking the the log of the power spectrum spreads out the values and makes them better features. This becomes the spectrogram:
+We cannot use the power spectrum as a feature because it has a few strong peaks and many small values. You can check this other <a href="https://danielsdiscoveries.wordpress.com/2017/09/29/spectrogram-input-normalisation-for-neural-networks/">fantastic post</a> on spectrogram normalization to learn why this is a problem. 
+Taking the log of the power spectrum spreads out the values and makes them better features. This becomes the spectrogram:
 
 $$\text{spectrogram} = log(|\text{STFT(x)}|^2)$$
 
-The range of the log function is from $-\infty$ to $+\infty$ which is clearly different than the integers from 0 to 255 in an image.</p>
-<p>A spectrogram transformation can also be thought of as a very simple "<a href="https://en.wikipedia.org/wiki/Channelizer">channelizer</a>" in Digital Signal Processing (DSP) terms. That is a fancy way to say that it splits the continuous frequency spectrum of a signal into discrete bins, or channels. For example, consider taking a spectrogram with 512 bins from a signal sampled at 16 kHz. This spectrogram will have 512 channels and each channel will have a "bandwidth" of $$16 \ \text{kHz} \ \ / \ \ 512 \ \text{bins} = 31.25 \ \text{Hz per bin}$$</p>
+The range of the log function is $-\infty$ to $+\infty$ which is clearly different than the integers from 0 to 255 in an image.</p>
+<p>A spectrogram transformation can also be thought of as a very simple "[channelizer]"(<a href="https://en.wikipedia.org/wiki/Channelizer">https://en.wikipedia.org/wiki/Channelizer</a>) in Digital Signal Processing (DSP) terms. That is a fancy way of saying that it splits the continuous frequency spectrum of a signal into discrete bins, or channels. For example, consider taking a spectrogram with 512 bins from a signal sampled at 16 kHz. This spectrogram will have 512 channels where each channel has a "bandwidth" of $$16 \ \text{kHz} \ \ / \ \ 512 \ \text{bins} = 31.25 \ \text{Hz per bin}$$</p>
 <p><a href="https://en.wikipedia.org/wiki/Communication_channel">Spectrogram channels</a> are very different from the image channels we are used to. So it raises the questions: should we normalize the entire spectrogram "image" with a single, global value? Or should we normalize each spectrogram channel just like the channels in an image? In the rest of this post, we compare global and channel-based spectrogram normalizations on a real-world dataset to find which is better.</p>
 
 </div>
@@ -280,8 +280,8 @@ The range of the log function is from $-\infty$ to $+\infty$ which is clearly di
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>We also have to talk about Transfer Learning in the context of normalization. In Transfer Learning, it is best-practice to normalize the new dataset with the statistics from the old dataset. This makes sure that the new network inputs are at the same scale as the original inputs. Since most pretrained vision models are trained on ImageNet, we normalize any new inputs with ImageNet statistics.<br>
-We avoid Transfer Learning in this post and instead train an 18-layer xResNet from scratch. The reason is that pretrained image models have learned to operate at a completely different scale than spectrograms. And the main goal here is to learn our own scalings instead!</p>
+<p>We also have to talk about Transfer Learning in the context of normalization. In Transfer Learning, it is best-practice to normalize the new dataset with the statistics from the old dataset. This makes sure that the new network inputs are at the same scale as the original inputs. Since most pretrained vision models were trained on ImageNet, we normalize any new inputs with ImageNet statistics.<br>
+We avoid Transfer Learning in this post and instead train an 18-layer xResNet from scratch. The reason is that pretrained image models operate at a completely different scale than spectrograms. And the main goal here is to learn our own scalings instead!</p>
 
 </div>
 </div>
@@ -1372,17 +1372,17 @@ The <code>get_dls</code> function makes it clear which normalization is being ap
     <span class="k">return</span> <span class="n">dls</span>
 
 <span class="k">def</span> <span class="nf">make_xresnet_grayscale</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">n_in</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
-    <span class="s2">"Modifies xresnet `model` for single channel images."</span> 
+    <span class="s2">"Modifies xresnet `model` for single-channel images."</span> 
     <span class="n">model</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">in_channels</span> <span class="o">=</span> <span class="n">n_in</span>
-    <span class="c1"># average weights to reduce dimension</span>
+    <span class="c1"># sum weights to reduce dimension</span>
     <span class="n">model</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">weight</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">parameter</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">model</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
 
-<span class="k">def</span> <span class="nf">train_loops</span><span class="p">(</span><span class="n">dls</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">num_runs</span><span class="o">=</span><span class="n">num_runs</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="n">epochs</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">train_loops</span><span class="p">(</span><span class="n">dls</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">num_runs</span><span class="o">=</span><span class="n">num_runs</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="n">epochs</span><span class="p">,</span> <span class="n">num_cls</span><span class="o">=</span><span class="mi">50</span><span class="p">):</span>
     <span class="s2">"Runs `num_runs` training loops with `dls` for given `epochs`."</span>
     <span class="n">accuracies</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_runs</span><span class="p">):</span>
         <span class="c1"># make new grayscale xresnet</span>
-        <span class="n">model</span> <span class="o">=</span> <span class="n">xresnet18</span><span class="p">(</span><span class="n">pretrained</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">n_out</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">xresnet18</span><span class="p">(</span><span class="n">pretrained</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">n_out</span><span class="o">=</span><span class="n">num_cls</span><span class="p">)</span>
         <span class="n">make_xresnet_grayscale</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">n_in</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
         <span class="c1"># get learner for this run</span>
         <span class="n">learn</span> <span class="o">=</span> <span class="n">Learner</span><span class="p">(</span><span class="n">dls</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">accuracy</span><span class="p">])</span>
@@ -2252,8 +2252,8 @@ The <code>get_dls</code> function makes it clear which normalization is being ap
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="Performance-with-global-statistics">
-<a class="anchor" href="#Performance-with-global-statistics" aria-hidden="true"><span class="octicon octicon-link"></span></a>Performance with global statistics<a class="anchor-link" href="#Performance-with-global-statistics"> </a>
+<h2 id="Performance-with-global-normalization">
+<a class="anchor" href="#Performance-with-global-normalization" aria-hidden="true"><span class="octicon octicon-link"></span></a>Performance with global normalization<a class="anchor-link" href="#Performance-with-global-normalization"> </a>
 </h2>
 <p>Next we normalize each audio waveform and the spectrograms with global, scalar statistics.</p>
 
@@ -3103,8 +3103,8 @@ The <code>get_dls</code> function makes it clear which normalization is being ap
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="Performance-with-channel-statistics">
-<a class="anchor" href="#Performance-with-channel-statistics" aria-hidden="true"><span class="octicon octicon-link"></span></a>Performance with channel statistics<a class="anchor-link" href="#Performance-with-channel-statistics"> </a>
+<h2 id="Performance-with-channel-normalization">
+<a class="anchor" href="#Performance-with-channel-normalization" aria-hidden="true"><span class="octicon octicon-link"></span></a>Performance with channel normalization<a class="anchor-link" href="#Performance-with-channel-normalization"> </a>
 </h2>
 <p>Finally, we normalize each audio waveform and the spectrograms with channel-based statistics.</p>
 
