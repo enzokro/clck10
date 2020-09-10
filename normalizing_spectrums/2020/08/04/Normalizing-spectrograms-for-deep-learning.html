@@ -109,7 +109,7 @@ window.onload = wrap_img;
        • <span class="read-time" title="Estimated read time">
     
     
-      30 min read
+      29 min read
     
 </span></p>
 
@@ -150,23 +150,22 @@ window.onload = wrap_img;
     <ul class="section-nav">
 <li class="toc-entry toc-h1"><a href="#Introduction">Introduction </a></li>
 <li class="toc-entry toc-h1"><a href="#Turning-audio-into-an-image">Turning audio into an image </a></li>
-<li class="toc-entry toc-h1"><a href="#Sample-audio-dataset">Sample audio dataset </a>
+<li class="toc-entry toc-h1"><a href="#Why-spectrograms-are-not-images-and-how-to-normalize-them">Why spectrograms are not images and how to normalize them </a></li>
+<li class="toc-entry toc-h1"><a href="#Downloading-a-sample-dataset">Downloading a sample dataset </a>
 <ul>
-<li class="toc-entry toc-h2"><a href="#Importing-fastai-and-fastaudio-modules">Importing fastai and fastaudio modules </a></li>
 <li class="toc-entry toc-h2"><a href="#Downloading-the-ESC-50-dataset">Downloading the ESC-50 dataset </a></li>
 </ul>
 </li>
-<li class="toc-entry toc-h1"><a href="#Normalizing-waveforms">Normalizing waveforms </a></li>
-<li class="toc-entry toc-h1"><a href="#Extracting-spectrograms-from-audio">Extracting spectrograms from audio </a></li>
-<li class="toc-entry toc-h1"><a href="#Why-spectrograms-are-not-images-and-how-to-normalize-them">Why spectrograms are not images and how to normalize them </a></li>
+<li class="toc-entry toc-h1"><a href="#How-to-normalize-audio-waveforms">How to normalize audio waveforms </a></li>
+<li class="toc-entry toc-h1"><a href="#Converting-audio-into-spectrograms">Converting audio into spectrograms </a></li>
 <li class="toc-entry toc-h1"><a href="#Getting-spectrogram-normalization-stats">Getting spectrogram normalization stats </a>
 <ul>
 <li class="toc-entry toc-h2"><a href="#Building-the-dataset-loader">Building the dataset loader </a></li>
-<li class="toc-entry toc-h2"><a href="#Calculating-the-normalization-statistics">Calculating the normalization statistics </a></li>
+<li class="toc-entry toc-h2"><a href="#Finding-the-statistics">Finding the statistics </a></li>
 </ul>
 </li>
-<li class="toc-entry toc-h1"><a href="#Using-the-normalization-statistics-with-Transforms">Using the normalization statistics with Transforms </a></li>
-<li class="toc-entry toc-h1"><a href="#Training-with-different-normalizations">Training with different normalizations </a>
+<li class="toc-entry toc-h1"><a href="#Transforms-to-normalize-mini-batches">Transforms to normalize mini-batches </a></li>
+<li class="toc-entry toc-h1"><a href="#Training-with-normalizations">Training with normalizations </a>
 <ul>
 <li class="toc-entry toc-h2"><a href="#Training-helpers">Training helpers </a></li>
 <li class="toc-entry toc-h2"><a href="#Baseline-performance">Baseline performance </a></li>
@@ -198,8 +197,8 @@ window.onload = wrap_img;
 <h1 id="Introduction">
 <a class="anchor" href="#Introduction" aria-hidden="true"><span class="octicon octicon-link"></span></a>Introduction<a class="anchor-link" href="#Introduction"> </a>
 </h1>
-<p>When training deep neural networks for audio tasks, spectrograms are often used as input images. Treating spectrograms as images means we can borrow many of the powerful techniques from image recognition with deep learning. A spectrogram, however, is fundamentally different from natural images as will be shown below. That brings up the central question of this post: how should spectrograms be normalized to train neural networks?</p>
-<p>This post assumes some familiarity with deep learning and signal processing concepts like the FFT. Knowledge of the <a href="https://github.com/fastai/fastai">fastai</a> library will also help with parts of the code.</p>
+<p>Spectrograms are often used as images to train deep networks for audio tasks. By treating spectrograms as images, we can borrow from the many powerful ideas in image recognition with deep learning. A spectrogram, however, is fundamentally different from natural images as we will see below. That brings up the central question of this post: how should spectrograms be normalized during training?</p>
+<p>This post assumes some familiarity with deep learning and signal processing concepts like the FFT. It is also a light introduction to the <a href="https://github.com/fastaudio/fastaudio">fastaudio</a> library.</p>
 
 </div>
 </div>
@@ -216,17 +215,17 @@ window.onload = wrap_img;
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>The success of image classification with deep neural networks can hardly be overstated. This challenging task used to be done with features handcrafted by domain experts. Now, features are automatically learned from labeled data instead. The performance of these learned features has completely shifted the Computer Vision paradigm. We would ideally like to apply these same, proven approaches to audio tasks as well.</p>
-<p>However, audio is treated like a one dimensional signal in most Machine Learning applications. Even stereo recordings with more than one channel are first mixed into mono (single channel) before processing. This means raw audio is unusable with 2-D Convolutional Neural Networks (CNNs), which are the workhorses of modern image recognition. If we could somehow represent audio in two dimensions, like an image, we could leverage many of the successful ideas in image classification.</p>
-<p>Thankfully there are many ways of transforming audio into two dimensions. The most popular one is the short-time Fourier Transform <a href="https://www.dsprelated.com/freebooks/sasp/Short_Time_Fourier_Transform.html">(STFT)</a> that turns audio into a spectrogram. The spectrogram is a 2-D signal representation in time and frequency, meaning it can used with a 2-D CNN! But first we need some preprocessing to make training easier.</p>
-<p>Since neural networks struggle to learn with unscaled features, it is crucial to normalize the features before inputting them to a model.
+<p>Image classification is a challenging task that was previously done with expert, handcrafted features. Now, features are automatically learned from labeled data instead. The success of these learned features has completely  shifted the paradigm of Computer Vision. We would ideally like to apply these same, proven techniques to increase the performance of audio tasks.</p>
+<p>However, audio is treated like a one dimensional signal in most Machine Learning applications. That means that raw audio is unusable with 2-D Convolutional Neural Networks (CNNs), which are the workhorses of modern image recognition. If we could somehow represent audio in two dimensions, like an image, then we could leverage the successful approaches in image classification.</p>
+<p>Thankfully there are many ways of transforming audio into two dimensions. The most popular one is turning audio into a <a href="https://ccrma.stanford.edu/~jos/mdft/Spectrograms.html">spectrogram</a>. The spectrogram is a 2-D signal representation in time and frequency, so it can used with a 2-D CNN! But first we need some preprocessing to make training easier.</p>
+<p>Unnormalized inputs can make it difficult for neural networks to learn well. We can solve this by normalizing the input features before passing them into a model.
 For natural images, normalization uses an estimated mean ($\mu$) and standard deviation ($\sigma$) as follows:</p>
 <ul>
 <li>Subtract $\mu$ from the image values to give them a mean of $0$. </li>
 <li>Divide the image values by $\sigma$ to give them a variance of $1$. </li>
 </ul>
-<p>In math terms if $x$ is our image, then:  $$x_{\text{norm}} = \frac{(x - \mu)}{\sigma}$$</p>
-<p>But spectrograms are fundamentally different from natural images so we should reevaluate if this same normalization makes sense. The rest of this post deals with two possible spectrogram normalizations compared on a real-world, practical dataset.</p>
+<p>In math terms, if $x$ is our image then $x_{\text{norm}}$ is:  $$x_{\text{norm}} = \frac{(x - \mu)}{\sigma}$$</p>
+<p>Since spectrograms are fundamentally different from natural images, we should if this type of normalization makes sense.</p>
 
 </div>
 </div>
@@ -234,12 +233,49 @@ For natural images, normalization uses an estimated mean ($\mu$) and standard de
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="Sample-audio-dataset">
-<a class="anchor" href="#Sample-audio-dataset" aria-hidden="true"><span class="octicon octicon-link"></span></a>Sample audio dataset<a class="anchor-link" href="#Sample-audio-dataset"> </a>
+<h1 id="Why-spectrograms-are-not-images-and-how-to-normalize-them">
+<a class="anchor" href="#Why-spectrograms-are-not-images-and-how-to-normalize-them" aria-hidden="true"><span class="octicon octicon-link"></span></a>Why spectrograms are not images and how to normalize them<a class="anchor-link" href="#Why-spectrograms-are-not-images-and-how-to-normalize-them"> </a>
 </h1>
-<p>To keep things practical, we will apply these spectrogram normalization techniques to a <a href="https://github.com/fastaudio/Audio-Competition">sound classification challenge</a> hosted by fastaudio. <a href="https://github.com/fastaudio/fastaudio">fastaudio</a> is a community extension of the fastai library to make audio tasks with neural networks more accessible.<br>
-The challenge here is to classify sounds in the <a href="https://github.com/karolpiczak/ESC-50">ESC-50 dataset</a>.
-ESC-50 stands for "Environment Sound Classification with 50 classes". This dataset contains many different types of sounds which gives a good feel for how varied audio spectrograms can be.</p>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>Now for the motivation behind this post, the fact that a spectrogram is fundamentally different from natural images. We first describe images and their normalization, then do the same for spectrograms.</p>
+<p>The height and width of an image are both in the spatial domain and share the same scale. Images are stored as integers in the range of <code>[0, 255]</code>. To normalize we first divide all pixels by 255, the max possible value, to map them into the range <code>[0, 1]</code>.  Then, we find the statistics that approximately center the data and give it unit variance. The three channels (RGB) in a color image are normalized separately. If an image is grayscale then its single channel is normalized instead.</p>
+<p>The dimensions in a spectrogram are different from those in an image. In a spectrogram, the horizontal dimension represents time and the vertical dimension represents frequency. These quantities are from different domains and each one has their own scale. The frequency dimension is determined by the size of the FFT window and sets the spectral resolution. The time dimension is determined by the total length of the signal, the size of the FFT window, and the hop size of the window.</p>
+<p>To be more specific, a spectrogram is actually the log of the power spectrum. Below we give a quick recap of how the spectrogram is computed to show how much it differs from images.</p>
+<p>If $\text{x}$ is the input audio then the STFT returns the spectrum:
+
+$$\text{spectrum} = \text{STFT(x)}$$
+
+We are more interested in the energy or power of the signal, so we take the absolute value of the STFT and square it:<br>
+$$\text{power_spectrum} = |\text{STFT(x)}|^2$$ 
+We cannot directly use the power spectrum as an input because it has a few strong peaks and many small values. For more details on why this is problem check this <a href="https://danielsdiscoveries.wordpress.com/2017/09/29/spectrogram-input-normalisation-for-neural-networks/">fantastic post</a> that also deals with spectrogram normalization. 
+Taking the the log of the power spectrum spreads out the values and makes them better features. This becomes the spectrogram:
+
+$$\text{spectrogram} = log(|\text{STFT(x)}|^2)$$
+
+The range of the log function is from $-\infty$ to $+\infty$ which is clearly different than the integers from 0 to 255 in an image.</p>
+<p>The spectrogram also has a different type of "channel". A spectrogram transformation can be interpreted as a "channelizer". That is a fancy way of saying it takes the continuous frequency spectrum of our signal and chops it up into discrete bins, or channels. For example, consider a signal sampled at 16 kHz where we take an STFT size of 512 bins. The spectrogram will have 512 channels where each one has a "bandwidth" of $$16 \ \text{kHz} \ \ / \ \ 512 \ \text{bins} = 31.25 \ \text{Hz per bin}$$</p>
+<p>Since spectrogram channels are so different from image channels it raises the question: should we (or can we?) normalize the entire spectrogram "image" with a single, global value? Or should we normalize each spectrogram channel like an image channel?</p>
+<p>The answer likely depends on how the system will be used. For example, if the system will be deployed in an environment similar to the training environment, then normalizing by spectrogram channels makes more sense. This is because channel-based statistics will track the activity of each channel in the training data. If the deployment environment has roughly the same patterns and distributions, then these statistics will be a good match. However, it is critical to monitor the deployed environment and update the statistics as needed to avoid shifting out of domain.</p>
+<p>If the system will instead be used in a completely different environment, of which you have no knowledge, then the global statistics might be a better fit. While not as technically sound, the model will (hopefully) be less surprised by radically new activity across the channels.</p>
+<p>Lastly there is the issue of Transfer Learning. In Transfer Learning it is best-practice to normalize the new dataset with the statistics from the old dataset. This makes sure the new network inputs are at the same scale at the original inputs. With most pre-trained vision models that means normalizing with ImageNet statistics. We avoid Transfer Learning in this post and instead train from scratch. The reason is that models pretrained on images have learned to operate at a completely different scale than spectrograms. And the the main goal here is to learn our own scalings instead.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h1 id="Downloading-a-sample-dataset">
+<a class="anchor" href="#Downloading-a-sample-dataset" aria-hidden="true"><span class="octicon octicon-link"></span></a>Downloading a sample dataset<a class="anchor-link" href="#Downloading-a-sample-dataset"> </a>
+</h1>
+<p>To keep things practical, we will apply these spectrogram normalization techniques to a <a href="https://github.com/fastaudio/Audio-Competition">sound classification challenge</a> hosted by fastaudio. <a href="https://github.com/fastaudio/fastaudio">fastaudio</a> is a community extension of the <a href="https://github.com/fastai/fastai/tree/master/fastai">fastai</a> library to make audio tasks with neural networks more accessible.<br>
+The challenge here is to classify sounds in the <a href="https://github.com/karolpiczak/ESC-50">ESC-50 dataset</a>, where
+ESC-50 stands for "Environment Sound Classification with 50 classes". This dataset has many different types of sounds which show how varied audio spectrograms can be.</p>
 <p>Many of the lines below are based on the fastaudio <a href="https://github.com/fastaudio/Audio-Competition/blob/master/ESC-50-baseline-1Fold.ipynb">baseline results notebook</a>.</p>
 
 </div>
@@ -248,9 +284,17 @@ ESC-50 stands for "Environment Sound Classification with 50 classes". This datas
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="Importing-fastai-and-fastaudio-modules">
-<a class="anchor" href="#Importing-fastai-and-fastaudio-modules" aria-hidden="true"><span class="octicon octicon-link"></span></a>Importing <code>fastai</code> and <code>fastaudio</code> modules<a class="anchor-link" href="#Importing-fastai-and-fastaudio-modules"> </a>
+<h2 id="Downloading-the-ESC-50-dataset">
+<a class="anchor" href="#Downloading-the-ESC-50-dataset" aria-hidden="true"><span class="octicon octicon-link"></span></a>Downloading the ESC-50 dataset<a class="anchor-link" href="#Downloading-the-ESC-50-dataset"> </a>
 </h2>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>The first step is to download the data. ESC-50 is already included in fastaudio so we can grab it with <code>untar_data</code>.</p>
+
 </div>
 </div>
 </div>
@@ -264,40 +308,8 @@ ESC-50 stands for "Environment Sound Classification with 50 classes". This datas
 <div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">fastai.vision.all</span> <span class="kn">import</span> <span class="o">*</span>
 <span class="kn">from</span> <span class="nn">fastaudio.core.all</span> <span class="kn">import</span> <span class="o">*</span>
 <span class="kn">from</span> <span class="nn">fastaudio.augment.all</span> <span class="kn">import</span> <span class="o">*</span>
-</pre></div>
 
-    </div>
-</div>
-</div>
-
-</div>
-    
-
-<div class="cell border-box-sizing text_cell rendered">
-<div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="Downloading-the-ESC-50-dataset">
-<a class="anchor" href="#Downloading-the-ESC-50-dataset" aria-hidden="true"><span class="octicon octicon-link"></span></a>Downloading the ESC-50 dataset<a class="anchor-link" href="#Downloading-the-ESC-50-dataset"> </a>
-</h2>
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered">
-<div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>The first step is to download the dataset. ESC-50 is included in fastaudio so we can grab it with fastai's <code>untar_data</code>.</p>
-
-</div>
-</div>
-</div>
-    
-    
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># already in fastaudio, can download with fastai's `untar_data`</span>
+<span class="c1"># already in fastaudio, can download with fastai's `untar_data`</span>
 <span class="n">path</span> <span class="o">=</span> <span class="n">untar_data</span><span class="p">(</span><span class="n">URLs</span><span class="o">.</span><span class="n">ESC50</span><span class="p">)</span>
 </pre></div>
 
@@ -311,7 +323,7 @@ ESC-50 stands for "Environment Sound Classification with 50 classes". This datas
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>The downloaded audio files are inside of the aptly named <code>audio</code> folder. Below we use the <code>ls</code> method, a handy fastai addition to python's standard <code>pathlib.Path</code>, to check the contents of this folder.</p>
+<p>The downloaded audio files are inside the aptly named <code>audio</code> folder. Below we use the <code>ls</code> method, a fastai addition to python's <code>pathlib.Path</code>, to check the contents of this folder.</p>
 
 </div>
 </div>
@@ -353,7 +365,7 @@ ESC-50 stands for "Environment Sound Classification with 50 classes". This datas
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>The output of <code>ls</code> shows 2,000 audio files. But the filenames are not very descriptive, so how can we know what is actually in each one?<br>
+<p>The output of <code>ls</code> shows 2,000 audio files. But the filenames are not very descriptive, so how do we know what is actually in each one?<br>
 Thankfully, as with many datasets, the download includes a table with more information about the data (aka metadata).</p>
 
 </div>
@@ -478,7 +490,7 @@ Thankfully, as with many datasets, the download includes a table with more infor
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>The key info from this table are in the <code>filename</code> and <code>category</code> columns.<br>
 <code>filename</code> gives the name of a file inside of the <code>audio</code> folder.<br>
-<code>category</code> tells us which class this file belongs to.</p>
+<code>category</code> tells us which class a file belongs to.</p>
 
 </div>
 </div>
@@ -486,7 +498,7 @@ Thankfully, as with many datasets, the download includes a table with more infor
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>We pick the last file in the data directory as a working example for normalization. The file's <code>name</code> can index into the metadata table above to show more information.</p>
+<p>The last file in the data directory will be our working example for normalization. We can index into the metadata table above using this file's <code>name</code> to learn more about it.</p>
 
 </div>
 </div>
@@ -568,7 +580,7 @@ Thankfully, as with many datasets, the download includes a table with more infor
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>This is a recording of crickets!<br>
-We use the <code>AudioTensor</code> class in fastaudio to load this file. The <code>create</code> function reads the audio samples straight into a <code>torch.Tensor</code>.</p>
+We can load this file with the <code>AudioTensor</code> class in fastaudio. Its <code>create</code> function reads the audio samples straight into a <code>torch.Tensor</code>.</p>
 
 </div>
 </div>
@@ -594,7 +606,7 @@ We use the <code>AudioTensor</code> class in fastaudio to load this file. The <c
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>An <code>AudioTensor</code> can plot and even play the audio with its <code>show</code> method. Each "burst" in the plot below is a cricket chirp. There are three full chirps and the early starts of a fourth chirp.</p>
+<p>An <code>AudioTensor</code> can plot and even play the audio with its <code>show</code> method.</p>
 
 </div>
 </div>
@@ -658,8 +670,16 @@ We use the <code>AudioTensor</code> class in fastaudio to load this file. The <c
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="Normalizing-waveforms">
-<a class="anchor" href="#Normalizing-waveforms" aria-hidden="true"><span class="octicon octicon-link"></span></a>Normalizing waveforms<a class="anchor-link" href="#Normalizing-waveforms"> </a>
+<p>Each "burst" in the plot above is a cricket chirp. There are three full chirps and the early starts of a fourth chirp.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h1 id="How-to-normalize-audio-waveforms">
+<a class="anchor" href="#How-to-normalize-audio-waveforms" aria-hidden="true"><span class="octicon octicon-link"></span></a>How to normalize audio waveforms<a class="anchor-link" href="#How-to-normalize-audio-waveforms"> </a>
 </h1>
 <p>The first step is normalizing the audio waveform itself. We give it a mean of zero and unit variance in the usual way:</p>
 
@@ -709,8 +729,42 @@ $$\text{norm_audio} = \frac{\text{audio} - mean(\text{audio})}{std(\text{audio})
 
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># checking if normalization worked</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># checking the mean</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Original audio mean:   </span><span class="si">{</span><span class="n">sample</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Normalized audio mean: </span><span class="si">{</span><span class="n">norm_sample</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+<div class="output_area">
+
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>Original audio mean:   -1.781299215508625e-05
+Normalized audio mean: 2.876160698495056e-10
+</pre>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+    
+
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># checking the standard deviation</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Original audio standard dev:   </span><span class="si">{</span><span class="n">sample</span><span class="o">.</span><span class="n">var</span><span class="p">()</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Normalized audio standard dev: </span><span class="si">{</span><span class="n">norm_sample</span><span class="o">.</span><span class="n">var</span><span class="p">()</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
 </pre></div>
 
@@ -724,7 +778,7 @@ $$\text{norm_audio} = \frac{\text{audio} - mean(\text{audio})}{std(\text{audio})
 <div class="output_area">
 
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>Normalized audio mean: 2.876160698495056e-10
+<pre>Original audio standard dev:   0.008586421608924866
 Normalized audio standard dev: 1.0
 </pre>
 </div>
@@ -747,7 +801,7 @@ Normalized audio standard dev: 1.0
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>We make a small <code>Transform</code> to normalize each waveform for later use.</p>
+<p>For convenience later on, we define the <code>AudioNormalize</code> transform to normalize waveforms in the fastai training loop.</p>
 
 </div>
 </div>
@@ -778,7 +832,7 @@ Normalized audio standard dev: 1.0
 
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># checking if the Transform normalizes a waveform</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># checking if the Transform normalized the waveform</span>
 <span class="n">wav_norm</span> <span class="o">=</span> <span class="n">AudioNormalize</span><span class="p">()</span>
 <span class="n">norm_sample</span> <span class="o">=</span> <span class="n">wav_norm</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Audio mean after transform: </span><span class="si">{</span><span class="n">norm_sample</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
@@ -810,8 +864,8 @@ Audio standard dev after transform: 1.0
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="Extracting-spectrograms-from-audio">
-<a class="anchor" href="#Extracting-spectrograms-from-audio" aria-hidden="true"><span class="octicon octicon-link"></span></a>Extracting spectrograms from audio<a class="anchor-link" href="#Extracting-spectrograms-from-audio"> </a>
+<h1 id="Converting-audio-into-spectrograms">
+<a class="anchor" href="#Converting-audio-into-spectrograms" aria-hidden="true"><span class="octicon octicon-link"></span></a>Converting audio into spectrograms<a class="anchor-link" href="#Converting-audio-into-spectrograms"> </a>
 </h1>
 </div>
 </div>
@@ -819,7 +873,7 @@ Audio standard dev after transform: 1.0
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>We can now extract a spectrogram from the normalized audio with the <code>AudioToSpec</code> class in fastaudio.</p>
+<p>The next step is to extract a spectrogram from the normalized audio. We can do this with the <code>AudioToSpec</code> class in fastaudio. This class takes an <code>AudioTensor</code> as input and, as we might expect, returns an <code>AudioSpectrogram</code>.</p>
 
 </div>
 </div>
@@ -831,34 +885,11 @@ Audio standard dev after transform: 1.0
 
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># create a fastaudio Transform that converts audio into spectrograms</span>
-<span class="n">cfg</span> <span class="o">=</span> <span class="n">AudioConfig</span><span class="o">.</span><span class="n">BasicSpectrogram</span><span class="p">()</span> <span class="c1"># defaults from torchaudio</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># create a fastaudio Transform to convert audio into spectrograms</span>
+<span class="n">cfg</span> <span class="o">=</span> <span class="n">AudioConfig</span><span class="o">.</span><span class="n">BasicSpectrogram</span><span class="p">()</span> <span class="c1"># with default torchaudio parameters</span>
 <span class="n">audio2spec</span> <span class="o">=</span> <span class="n">AudioToSpec</span><span class="o">.</span><span class="n">from_cfg</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
-</pre></div>
 
-    </div>
-</div>
-</div>
-
-</div>
-    
-
-<div class="cell border-box-sizing text_cell rendered">
-<div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>The spectrogram computation details are not important here. But a quick look at its <a href="https://pytorch.org/audio/_modules/torchaudio/functional.html#spectrogram">source code</a> shows that it boils down to some pre and post processing around a <a href="https://pytorch.org/docs/stable/generated/torch.stft.html">torch.stft</a> call. We now transform the audio into a spectrogram.</p>
-
-</div>
-</div>
-</div>
-    
-    
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># extract the spectrogram</span>
+<span class="c1"># extract the spectrogram</span>
 <span class="n">spec</span> <span class="o">=</span> <span class="n">audio2spec</span><span class="p">(</span><span class="n">norm_sample</span><span class="p">)</span>
 </pre></div>
 
@@ -872,7 +903,7 @@ Audio standard dev after transform: 1.0
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Just like with waveforms, fastaudio can directly plot spectrograms. The colorbar on the right is especially helpful since <code>matplotlib</code> always normalizes the values in a plot to a certain color range. Withtout the colorbar, the fixed color range makes it impossible to know or even guess the exact values in a spectrogram plot.</p>
+<p>The <code>show</code> method of the <code>AudioSpectrogram</code> is a great, quick way to plot the spectrogram.</p>
 
 </div>
 </div>
@@ -922,36 +953,7 @@ Audio standard dev after transform: 1.0
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="Why-spectrograms-are-not-images-and-how-to-normalize-them">
-<a class="anchor" href="#Why-spectrograms-are-not-images-and-how-to-normalize-them" aria-hidden="true"><span class="octicon octicon-link"></span></a>Why spectrograms are not images and how to normalize them<a class="anchor-link" href="#Why-spectrograms-are-not-images-and-how-to-normalize-them"> </a>
-</h1>
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered">
-<div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Now for the motivation behind this post, the fact that a spectrogram is fundamentally different from natural images. We first describe images and their normalization, then do the same for spectrograms.</p>
-<p>The height and width of an image are both in the spatial domain and share the same scale. Images are stored as integers in the range of <code>[0, 255]</code>. To normalize we first divide all pixels by 255, the max possible value, to map them into the range <code>[0, 1]</code>.  Then, we find the statistics that approximately center the data and give it unit variance. The three channels (RGB) in a color image are normalized separately. If an image is grayscale then its single channel is normalized instead.</p>
-<p>The dimensions in a spectrogram are different from those in an image. In a spectrogram, the horizontal dimension represents time and the vertical dimension represents frequency. These quantities are from different domains and each one has their own scale. The frequency dimension is determined by the size of the FFT window and sets the spectral resolution. The time dimension is determined by the total length of the signal, the size of the FFT window, and the hop size of the window.</p>
-<p>To be more specific, a spectrogram is actually the log of the power spectrum. Below we give a quick recap of how the spectrogram is computed to show how much it differs from images.</p>
-<p>If $\text{x}$ is the input audio then the STFT returns the spectrum:
-
-$$\text{spectrum} = \text{STFT(x)}$$
-
-We are more interested in the energy or power of the signal, so we take the absolute value of the STFT and square it:<br>
-$$\text{power_spectrum} = |\text{STFT(x)}|^2$$ 
-We cannot directly use the power spectrum as an input because it has a few strong peaks and many small values. For more details on why this is problem check this <a href="https://danielsdiscoveries.wordpress.com/2017/09/29/spectrogram-input-normalisation-for-neural-networks/">fantastic post</a> that also deals with spectrogram normalization. 
-Taking the the log of the power spectrum spreads out the values and makes them better features. This becomes the spectrogram:
-
-$$\text{spectrogram} = log(|\text{STFT(x)}|^2)$$
-
-The range of the log function is from $-\infty$ to $+\infty$ which is clearly different than the integers from 0 to 255 in an image.</p>
-<p>The spectrogram also has a different type of "channel". A spectrogram transformation can be interpreted as a "channelizer". That is a fancy way of saying it takes the continuous frequency spectrum of our signal and chops it up into discrete bins, or channels. For example, consider a signal sampled at 16 kHz where we take an STFT size of 512 bins. The spectrogram will have 512 channels where each one has a "bandwidth" of $$16 \ \text{kHz} \ \ / \ \ 512 \ \text{bins} = 31.25 \ \text{Hz per bin}$$</p>
-<p>Since spectrogram channels are so different from image channels it raises the question: should we (or can we?) normalize the entire spectrogram "image" with a single, global value? Or should we normalize each spectrogram channel like an image channel?</p>
-<p>The answer likely depends on how the system will be used. For example, if the system will be deployed in an environment similar to the training environment, then normalizing by spectrogram channels makes more sense. This is because channel-based statistics will track the activity of each channel in the training data. If the deployment environment has roughly the same patterns and distributions, then these statistics will be a good match. However, it is critical to monitor the deployed environment and update the statistics as needed to avoid shifting out of domain.</p>
-<p>If the system will instead be used in a completely different environment, of which you have no knowledge, then the global statistics might be a better fit. While not as technically sound, the model will (hopefully) be less surprised by radically new activity across the channels.</p>
-<p>Lastly there is the issue of Transfer Learning. In Transfer Learning it is best-practice to normalize the new dataset with the statistics from the old dataset. This makes sure the new network inputs are at the same scale at the original inputs. With most pre-trained vision models that means normalizing with ImageNet statistics. We avoid Transfer Learning in this post and instead train from scratch. The reason is that models pretrained on images have learned to operate at a completely different scale than spectrograms. And the the main goal here is to learn our own scalings instead.</p>
+<p>The colorbar on the right showing the power in the signal is especially helpful since <code>matplotlib</code> always scales the values in a plot to the same color range. Without this colorbar, it is impossible to know or even guess the specific values in a spectrogram plot.</p>
 
 </div>
 </div>
@@ -968,8 +970,8 @@ The range of the log function is from $-\infty$ to $+\infty$ which is clearly di
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Note that normalization statistics must always come from the training set. This is a crucial place to avoid data leakage from the validation set. First we step through the training set once to get the mean and standard deviation of each mini-batch. Then we average all mini-batch statistics to get a single pair of ($\mu,\sigma)$ normalization statistics.<br>
-One small detail: if your training dataset is large enough, you often do not need to iterate through the whole set. Sampling 10% to 20% of the dataset can be enough for accurate statistics. However, since ESC-50 is small we find ($\mu,\sigma)$ from the whole set.</p>
+<p>To get the normalization stats, we have to step through the training set and find the mean and standard deviation of each mini-batch. Then we average all the mini-batch statistics to get a single pair of ($\mu,\sigma)$ normalization statistics. Note that normalization statistics always come from the training set. This is a crucial place to avoid data leakage. 
+One small detail: if your training dataset is large enough it is not necessary to go through the whole set. Sampling 10% to 20% of the dataset can be enough for accurate statistics. However, since ESC-50 is small we find ($\mu,\sigma)$ from the whole set.</p>
 <p>To accumulate these statistics over mini-batches we can borrow and slightly refactor a class from this <a href="http://notmatthancock.github.io/2017/03/23/simple-batch-stat-updates.html">very helpful post</a>. The <code>StatsRecorder</code> class below tracks the mean and standard deviation across mini-batches.</p>
 
 </div>
@@ -1051,8 +1053,8 @@ To average over spectrogram channels instead we only need to pass a different <c
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>The setup belows follows the fastaudio ESC-50 baseline to iterate through the ESC-50 training dataset.<br>
-It is worth mentioning that fastaudio resamples audio to 16 kHz by default. While much of the audio out in the world is sampled at 16 kHz, ESC-50 is actually sampled at a higher 44.1 kHz rate. Downsampling risks throwing away some information. But, keeping the higher sampling rate almost triples the "width" of the spectrogram. This much larger image limits our batch size and architecture choices. Here we keep the downsample to 16 kHz since it yields a very reasonable spectrogram shape of <code>[201, 401]</code> compared to the original, larger shape of <code>[201, 1103]</code>.</p>
+<p>The setup belows follows the fastaudio ESC-50 baseline to iterate through the training dataset. 
+It is worth mentioning that the files in ESC-50 are sampled 44.1 kHz, but fastaudio will resample them to 16 kHz by default. Downsampling like this risks throwing away some information. But, keeping the higher sampling rate almost triples the "width" (aka time) of the spectrogram. This larger image will take up more memory in the GPU and limits our batch size and architecture choices. We keep this downsampling since it gives the spectrograms a very reasonable shape of <code>[201, 401]</code>, compared with the much larger shape of <code>[201, 1103]</code> if we don't downsample.</p>
 
 </div>
 </div>
@@ -1109,8 +1111,8 @@ It is worth mentioning that fastaudio resamples audio to 16 kHz by default. Whil
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="Calculating-the-normalization-statistics">
-<a class="anchor" href="#Calculating-the-normalization-statistics" aria-hidden="true"><span class="octicon octicon-link"></span></a>Calculating the normalization statistics<a class="anchor-link" href="#Calculating-the-normalization-statistics"> </a>
+<h2 id="Finding-the-statistics">
+<a class="anchor" href="#Finding-the-statistics" aria-hidden="true"><span class="octicon octicon-link"></span></a>Finding the statistics<a class="anchor-link" href="#Finding-the-statistics"> </a>
 </h2>
 </div>
 </div>
@@ -1118,7 +1120,7 @@ It is worth mentioning that fastaudio resamples audio to 16 kHz by default. Whil
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Below we make two recorders: one for global statistics and the other for channel-based statistics. Then we step through the training dataset and find the normalization stats.</p>
+<p>Below we make two recorders: one for global statistics and the other for channel-based statistics. Then we step through the training dataset to find both sets of stats.</p>
 
 </div>
 </div>
@@ -1156,7 +1158,7 @@ It is worth mentioning that fastaudio resamples audio to 16 kHz by default. Whil
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>We can check the shape of both statistics to make sure they are correct. For the global "grayscale" statistics, we expect a shape of: <code>[1,1,1,1]</code>. With spectrogram channel normalizations, we expect a shape of <code>[1,1,201,1]</code> with one normalization stat for each spectrogram bin.</p>
+<p>We can check the shape of the statistics to make sure they are correct. For the global "grayscale" statistics, we expect a shape of: <code>[1,1,1,1]</code>. With spectrogram channel normalizations, we expect one value per spectrogram bin for a shape of <code>[1,1,201,1]</code>.</p>
 
 </div>
 </div>
@@ -1230,8 +1232,8 @@ Shape of channel standard dev: torch.Size([1, 1, 201, 1])
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="Using-the-normalization-statistics-with-Transforms">
-<a class="anchor" href="#Using-the-normalization-statistics-with-Transforms" aria-hidden="true"><span class="octicon octicon-link"></span></a>Using the normalization statistics with <code>Transforms</code><a class="anchor-link" href="#Using-the-normalization-statistics-with-Transforms"> </a>
+<h1 id="Transforms-to-normalize-mini-batches">
+<a class="anchor" href="#Transforms-to-normalize-mini-batches" aria-hidden="true"><span class="octicon octicon-link"></span></a><code>Transforms</code> to normalize mini-batches<a class="anchor-link" href="#Transforms-to-normalize-mini-batches"> </a>
 </h1>
 </div>
 </div>
@@ -1288,8 +1290,8 @@ Shape of channel standard dev: torch.Size([1, 1, 201, 1])
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="Training-with-different-normalizations">
-<a class="anchor" href="#Training-with-different-normalizations" aria-hidden="true"><span class="octicon octicon-link"></span></a>Training with different normalizations<a class="anchor-link" href="#Training-with-different-normalizations"> </a>
+<h1 id="Training-with-normalizations">
+<a class="anchor" href="#Training-with-normalizations" aria-hidden="true"><span class="octicon octicon-link"></span></a>Training with normalizations<a class="anchor-link" href="#Training-with-normalizations"> </a>
 </h1>
 </div>
 </div>
@@ -1297,7 +1299,7 @@ Shape of channel standard dev: torch.Size([1, 1, 201, 1])
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Now for the moment of truth. We train with the two different spectrogram normalizations and measure their impact. For this we again follow the <code>fastaudio</code> baseline and train each type of normalization for 20 epochs. The final score is the averaged accuracy of five runs.</p>
+<p>Now for the moment of truth. We train with the two different spectrogram normalizations and measure their impact. For this we again follow the fastaudio baseline and train each type of normalization for 20 epochs. The final score is the averaged accuracy of five runs.</p>
 
 </div>
 </div>
@@ -1326,7 +1328,7 @@ Shape of channel standard dev: torch.Size([1, 1, 201, 1])
 <h2 id="Training-helpers">
 <a class="anchor" href="#Training-helpers" aria-hidden="true"><span class="octicon octicon-link"></span></a>Training helpers<a class="anchor-link" href="#Training-helpers"> </a>
 </h2>
-<p>To avoid repeating ourselves, the helper functions below will build dataloaders and run the training loops.<br>
+<p>To avoid repeating ourselves, the helper functions below build the dataloaders and run the training loops.<br>
 The <code>get_dls</code> function makes it clear which normalization is being applied. The <code>train_loops</code> function repeats training runs a given number of times.</p>
 
 </div>
@@ -1384,7 +1386,7 @@ The <code>get_dls</code> function makes it clear which normalization is being ap
 <h2 id="Baseline-performance">
 <a class="anchor" href="#Baseline-performance" aria-hidden="true"><span class="octicon octicon-link"></span></a>Baseline performance<a class="anchor-link" href="#Baseline-performance"> </a>
 </h2>
-<p>Before getting carried away with normalization, we have to first know where we stand. That means setting a baseline without normalizations. This allows us to evaluate the impact of normalization later on, else there is no way to know if normalization helped at all.</p>
+<p>Before getting carried away with normalization, we have to first set a baseline without normalizations. This allows us to evaluate the impact of normalization later on, else there is no way to know if normalization helps at all.</p>
 
 </div>
 </div>
@@ -2234,7 +2236,7 @@ The <code>get_dls</code> function makes it clear which normalization is being ap
 <h2 id="Performance-with-global-statistics">
 <a class="anchor" href="#Performance-with-global-statistics" aria-hidden="true"><span class="octicon octicon-link"></span></a>Performance with global statistics<a class="anchor-link" href="#Performance-with-global-statistics"> </a>
 </h2>
-<p>Next we normalize each audio waveform and the spectrograms with global scalar statistics.</p>
+<p>Next we normalize each audio waveform and the spectrograms with global, scalar statistics.</p>
 
 </div>
 </div>
@@ -3943,14 +3945,14 @@ The <code>get_dls</code> function makes it clear which normalization is being ap
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>I ran the cells above several times to make sure the patterns held.</p>
-<p>Overall, there is a gain from global normalization. Channel-based normalization usually helps a little but sometimes hurts. While the increase in performance is small, there are several explanations that point to other possible approaches discussed below.</p>
-<p>For starters, the spectrograms in ESC-50 are very different both within and across classes. In other words the spectrogram channel activity changes a lot from sample to sample. A global statistic likely fares better under these unpredictable conditions. If all the audio came from a similar source, like speech, then the per-channel normalization might fare better.</p>
-<p>We also process the entire five second files at once, which is a large analysis window by audio standards. This large window means that each sample looks exactly the same in every epoch. If we used a smaller analysis window, say 2 seconds, we could randomly "crop" many spectrogram regions from a single example as a kind of data augmentation. The risk here is grabbing a silence region without any information and still giving it a class label (but a simple energy threshold can prevent this). Cropping with a smaller analysis window is one way to expose the networks to more samples and variability.</p>
-<p>Using the entire waveform at once also means that the waveform statistics need to model a very long-term relationship. Going back to the cricket recording example: we would not expect good normalization statistics for the chirps to be the same as good statistics for the pauses in between chirps. To counter this it is possible to do a "short-time" normalization. Here we pick a sliding window, often much smaller than the whole waveform, and only normalize the data inside of it. This "short-time" normalization can be applied with or without the global waveform normalization.</p>
-<p>Furthermore, the spectrogram is a high-dimensional feature with 201 frequency bins. It is common in audio tasks to reduce this dimension by combining nearby bins. This is done with something called "filterbanks" which usually operate at the Mel frequency scale. <a href="http://practicalcryptography.com/miscellaneous/machine-learning/guide-mel-frequency-cepstral-coefficients-mfccs/">This tutorial</a> is one of my favorites and gives an incredibly clear description of Mel frequency and the filterbank process. There are other options such as <a href="https://www.mathworks.com/help/audio/ref/gammatonefilterbank-system-object.html">Gammatone filterbanks</a> as well. While this might seem like an expert handcrafted feature, there is good reason for using filterbanks in audio tasks. If we feed in a raw spectrogram, the early convolutional layers tend to learn something like a filterbank anyway! So we might as well help the network by feeding in an acoustically-motivated filterbank and letting it focus on more complicated relationships.</p>
-<p>We are also training a powerful 18-layer model from scratch with only 1600 images. Deep learning can best handle these small datasets with Transfer Learning. But, we stayed away from Transfer Learning because pretrained networks are tightly coupled to their original dataset's normalization statistics. And the main idea here was to learn our own spectrogram scaling. It is possible that a smaller, simpler network will perform better. Looking at the training logs above, it seems the validation loss was still decreasing. So we'd have to train for longer to check if this network is actually overfitting and a simpler model is warranted.</p>
-<p>Lastly, there is no data augmentation even though it is almost de facto when training CNNs. This is another rabbit hole we could follow. Using image augmentations (flips, rotations, etc) does not make technical sense for a spectrogram. A better avenue is signal processing augmentations like <code>SpecAugment</code>. By the way, <code>SpecAugment</code> is already included in <code>fastaudio</code>! Along with many other waveform and spectrogram augmentations.</p>
-<p>To recap, there are many good reason for why normalization only helped a little on the ESC-50 dataset. The points above described some of the potential avenues to increase performance.</p>
+<p>Overall, there is a gain from global normalization. Channel-based normalization usually helps a little but sometimes hurts. While the increase in performance is small, there are several explanations for this that point us towards other approaches.</p>
+<p>For starters, the spectrograms in ESC-50 are very different both within and across classes. In other words the activity in each spectrogram channel changes a lot from sample to sample. A global statistic likely fares better under these unpredictable conditions. If all the audio came from a similar source, like speech, then the per-channel normalization might fare better.</p>
+<p>We also process the entire five second files at once, which is a large analysis window by audio standards. This large window means that each sample looks exactly the same in every epoch. If we used a smaller analysis window, say 2 seconds, we could randomly "crop" many spectrogram regions from a single example as a kind of data augmentation. The risk here is grabbing a silent region without any information but still giving it a class label (though an energy threshold can prevent this). Cropping with a smaller analysis window is one way to expose the networks to more samples and variability.</p>
+<p>Using the entire waveform at once also means that the waveform statistics need to model a very long-term relationship. Going back to the cricket recording example: we would not expect good normalization statistics for the chirps to be the same as good statistics for the pauses in between chirps. To counter this it is possible to do a "short-time" normalization. Here we pick a sliding window, often much smaller than the whole waveform, and only normalize the data inside as it steps through the waveform. This "short-time" normalization can be applied with or without the global waveform normalization.</p>
+<p>Furthermore, the spectrogram is a high-dimensional feature with 201 frequency bins. It is common in audio tasks to reduce this dimension by combining nearby bins. This is done with something called "filterbanks" which usually operate at the Mel frequency scale. <a href="http://practicalcryptography.com/miscellaneous/machine-learning/guide-mel-frequency-cepstral-coefficients-mfccs/">This tutorial</a> is one of my favorites and gives an incredibly clear description of Mel frequency and the filterbank process. There are other options such as <a href="https://www.mathworks.com/help/audio/ref/gammatonefilterbank-system-object.html">Gammatone filterbanks</a> as well. While this might seem like an expert handcrafted feature, there is good reason for using filterbanks in audio tasks. If we feed in a raw spectrogram, the early convolutional layers tend to learn something like a filterbank anyway! So directly feeding a filterbank into the network lets it focus on more complicated relationships.</p>
+<p>We are also training a powerful 18-layer model from scratch with only 1600 images. While deep learning can handle datasets this small, it is usually only through Transfer Learning. But, we stayed away from Transfer Learning because pretrained networks are tightly coupled to their original dataset's normalization statistics. And the main idea here was to learn our own spectrogram scalings. It is possible that a smaller, simpler network will perform better. Looking at the training logs above, it seems the validation loss was still decreasing. So we'd still have to train for longer to check if the network is actually overfitting and a simpler model is needed.</p>
+<p>Lastly, there is no data augmentation even though it is almost de facto when training CNNs. Using image augmentations (flips, rotations, etc) can be used but they do not make technical sense for a spectrogram. A better avenue is signal processing augmentations like <code>SpecAugment</code>. By the way, <code>SpecAugment</code> is already included in fastaudio! Along with many other waveform and spectrogram <a href="https://github.com/fastaudio/fastaudio/tree/master/src/fastaudio/augment">augmentations</a>.</p>
+<p>To recap, there are many good reason for why normalization only helped a little on the ESC-50 dataset. The points above described some possible steps to further increase performance.</p>
 
 </div>
 </div>
