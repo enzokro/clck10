@@ -149,7 +149,7 @@ window.onload = wrap_img;
   <div class="post-content e-content" itemprop="articleBody">
     <ul class="section-nav">
 <li class="toc-entry toc-h1"><a href="#Introduction">Introduction </a></li>
-<li class="toc-entry toc-h1"><a href="#Turning-audio-into-an-image">Turning audio into an image </a></li>
+<li class="toc-entry toc-h1"><a href="#Turning-audio-into-images">Turning audio into images </a></li>
 <li class="toc-entry toc-h1"><a href="#Why-spectrograms-are-not-images-and-how-to-normalize-them">Why spectrograms are not images and how to normalize them </a>
 <ul>
 <li class="toc-entry toc-h2"><a href="#A-quick-note-on-Transfer-Learning">A quick note on Transfer Learning </a></li>
@@ -160,8 +160,8 @@ window.onload = wrap_img;
 <li class="toc-entry toc-h2"><a href="#Downloading-the-ESC-50-dataset">Downloading the ESC-50 dataset </a></li>
 </ul>
 </li>
-<li class="toc-entry toc-h1"><a href="#How-to-normalize-audio-waveforms">How to normalize audio waveforms </a></li>
-<li class="toc-entry toc-h1"><a href="#Converting-audio-into-spectrograms">Converting audio into spectrograms </a></li>
+<li class="toc-entry toc-h1"><a href="#Normalizing-an-audio-waveform">Normalizing an audio waveform </a></li>
+<li class="toc-entry toc-h1"><a href="#Extracting-spectrograms-from-audio">Extracting spectrograms from audio </a></li>
 <li class="toc-entry toc-h1"><a href="#Getting-spectrogram-normalization-stats">Getting spectrogram normalization stats </a>
 <ul>
 <li class="toc-entry toc-h2"><a href="#Building-the-dataset-loader">Building the dataset loader </a></li>
@@ -210,8 +210,8 @@ window.onload = wrap_img;
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="Turning-audio-into-an-image">
-<a class="anchor" href="#Turning-audio-into-an-image" aria-hidden="true"><span class="octicon octicon-link"></span></a>Turning audio into an image<a class="anchor-link" href="#Turning-audio-into-an-image"> </a>
+<h1 id="Turning-audio-into-images">
+<a class="anchor" href="#Turning-audio-into-images" aria-hidden="true"><span class="octicon octicon-link"></span></a>Turning audio into images<a class="anchor-link" href="#Turning-audio-into-images"> </a>
 </h1>
 </div>
 </div>
@@ -697,8 +697,8 @@ We can load this file with the <code>AudioTensor</code> class in fastaudio. Its 
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="How-to-normalize-audio-waveforms">
-<a class="anchor" href="#How-to-normalize-audio-waveforms" aria-hidden="true"><span class="octicon octicon-link"></span></a>How to normalize audio waveforms<a class="anchor-link" href="#How-to-normalize-audio-waveforms"> </a>
+<h1 id="Normalizing-an-audio-waveform">
+<a class="anchor" href="#Normalizing-an-audio-waveform" aria-hidden="true"><span class="octicon octicon-link"></span></a>Normalizing an audio waveform<a class="anchor-link" href="#Normalizing-an-audio-waveform"> </a>
 </h1>
 <p>The first step is normalizing the audio waveform itself. We give it a mean of zero and unit variance in the usual way:</p>
 
@@ -883,8 +883,8 @@ Audio standard dev after transform: 1.0
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="Converting-audio-into-spectrograms">
-<a class="anchor" href="#Converting-audio-into-spectrograms" aria-hidden="true"><span class="octicon octicon-link"></span></a>Converting audio into spectrograms<a class="anchor-link" href="#Converting-audio-into-spectrograms"> </a>
+<h1 id="Extracting-spectrograms-from-audio">
+<a class="anchor" href="#Extracting-spectrograms-from-audio" aria-hidden="true"><span class="octicon octicon-link"></span></a>Extracting spectrograms from audio<a class="anchor-link" href="#Extracting-spectrograms-from-audio"> </a>
 </h1>
 </div>
 </div>
