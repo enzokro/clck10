@@ -201,7 +201,7 @@ window.onload = wrap_img;
 <h1 id="Introduction">
 <a class="anchor" href="#Introduction" aria-hidden="true"><span class="octicon octicon-link"></span></a>Introduction<a class="anchor-link" href="#Introduction"> </a>
 </h1>
-<p>Spectrograms are often used as images to train deep neural networks for audio tasks. By treating spectrograms as images, we can borrow from the many powerful ideas in image recognition with deep learning. A spectrogram, however, is fundamentally different from natural images as we will see below. That brings up the central question of this post: how should spectrograms be normalized during training?</p>
+<p>Spectrograms are often used as images to train deep neural networks for audio tasks. By treating spectrograms as images, we can borrow from the many powerful ideas in image recognition with deep learning. A spectrogram, however, is fundamentally different than natural images as we will see below. That brings up the central question of this post: how should spectrograms be normalized during training?</p>
 <p>This post assumes some familiarity with deep learning and signal processing concepts like the FFT. It is also a light introduction to the <a href="https://github.com/fastaudio/fastaudio">fastaudio</a> library.</p>
 
 </div>
@@ -821,7 +821,7 @@ Normalized audio standard dev: 1.0
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>For convenience later on, we define the <code>AudioNormalize</code> transform to normalize waveforms in the fastai training loop.</p>
+<p>For convenience later on, we define the <code>AudioNormalize</code> transform to normalize waveforms in a fastai training loop.</p>
 
 </div>
 </div>
@@ -990,8 +990,8 @@ Audio standard dev after transform: 1.0
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>To get the normalization stats, we have to step through the training set and find the mean and standard deviation of each mini-batch. Then we average all the mini-batch statistics to get a single pair of ($\mu,\sigma)$ normalization statistics. Note that normalization statistics always come from the training set. This is a crucial place to avoid data leakage. 
-One small detail: if your training dataset is large enough it is not necessary to go through the whole set. Sampling 10% to 20% of the dataset can be enough for accurate statistics. However, since ESC-50 is small we find ($\mu,\sigma)$ from the whole set.</p>
+<p>To get the normalization stats, we have to step through the training set and find the mean and standard deviation of each mini-batch. Then we average all the mini-batch statistics to get a single pair of ($\mu,\sigma)$ normalization statistics. Note that normalization statistics must alway come from the training set. This is a crucial place to avoid data leakage.</p>
+<p>One small detail: if your training dataset is large enough it is not necessary to go through the whole set. Sampling 10% to 20% of the dataset can be enough for accurate statistics. However, since ESC-50 is small we find ($\mu,\sigma)$ from the whole set.</p>
 <p>To accumulate these statistics over mini-batches we can borrow and slightly refactor a class from this <a href="http://notmatthancock.github.io/2017/03/23/simple-batch-stat-updates.html">very helpful post</a>. The <code>StatsRecorder</code> class below tracks the mean and standard deviation across mini-batches.</p>
 
 </div>
@@ -1073,7 +1073,7 @@ To average over spectrogram channels instead we only need to pass a different <c
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>The setup belows follows the fastaudio ESC-50 baseline to iterate through the training dataset. 
+<p>The setup below follows the fastaudio ESC-50 baseline to step through the training dataset. 
 It is worth mentioning that the files in ESC-50 are sampled 44.1 kHz, but fastaudio will resample them to 16 kHz by default. Downsampling like this risks throwing away some information. But, keeping the higher sampling rate almost triples the "width" (aka time) of the spectrogram. This larger image will take up more memory in the GPU and limits our batch size and architecture choices. We keep this downsampling since it gives the spectrograms a very reasonable shape of <code>[201, 401]</code>, compared with the much larger shape of <code>[201, 1103]</code> if we don't downsample.</p>
 
 </div>
@@ -1140,7 +1140,7 @@ It is worth mentioning that the files in ESC-50 are sampled 44.1 kHz, but fastau
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Below we make two recorders: one for global statistics and the other for channel-based statistics. Then we step through the training dataset to find both sets of stats.</p>
+<p>Next we make two recorders: one for global statistics and the other for channel-based statistics. Then we step through the training dataset to find both sets of stats.</p>
 
 </div>
 </div>
@@ -3964,8 +3964,30 @@ The <code>get_dls</code> function makes it clear which normalization is being ap
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>I ran the cells above several times to make sure the patterns held.</p>
-<p>Overall, there is a gain from global normalization. Channel-based normalization shows a much smaller benefit. While these increases in performance are small, there are several explanations for this that point us towards other approaches.</p>
+<p>The results are:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">Normalization</th>
+<th style="text-align:center">Average Accuracy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">None</td>
+<td style="text-align:center">.7110</td>
+</tr>
+<tr>
+<td style="text-align:center">Global</td>
+<td style="text-align:center"><strong>.7315</strong></td>
+</tr>
+<tr>
+<td style="text-align:center">Channel</td>
+<td style="text-align:center">.7144</td>
+</tr>
+</tbody>
+</table>
+<p>I ran the cells above several times to make sure these patterns held. Overall, there is a gain from global normalization. Channel-based normalization shows a smaller benefit. While these increases in performance are a good starting point, there are several explanations for this that point us towards other approaches.</p>
 <p>For starters, the spectrograms in ESC-50 are very different both within and across classes. In other words the activity in each spectrogram channel changes a lot from sample to sample. A global statistic likely fares better under these unpredictable conditions. If all the audio came from a similar source, like speech, then the per-channel normalization might fare better.</p>
 <p>We also process the entire five second files at once, which is a large analysis window by audio standards. This large window means that each sample looks exactly the same in every epoch. If we used a smaller analysis window, say 2 seconds, we could randomly "crop" many spectrogram regions from a single example as a kind of data augmentation. The risk here is grabbing a silent region without any information but still giving it a class label (though an energy threshold can prevent this). Cropping with a smaller analysis window is one way to expose the networks to more samples and variability.</p>
 <p>Using the entire waveform at once also means that the waveform statistics need to model a very long-term relationship. Going back to the cricket recording example: we would not expect good normalization statistics for the chirps to be the same as good statistics for the pauses in between chirps. To counter this it is possible to do a "short-time" normalization. Here we pick a sliding window, often much smaller than the whole waveform, and only normalize the data inside as it steps through the waveform. This "short-time" normalization can be applied with or without the global waveform normalization.</p>
@@ -3989,10 +4011,10 @@ The <code>get_dls</code> function makes it clear which normalization is being ap
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>In this post we saw how spectrograms are fundamentally different from natural images. We then explored two ways of normalizing spectrograms when training neural networks: global normalization and channel-based normalization.</p>
-<p>Next we implemented these two normalization techniques and tested them against an unnormalized baseline on the ESC-50 dataset. There was a small but noticeable gain. We examined why this gain was potentially so small, and offered some approaches that could boost performance.</p>
-<p>In the end, the choice of spectrogram normalization likely depends on how the system will be used. For example, if the system will be deployed in an environment similar to the training environment, then normalizing by spectrogram channels makes more sense. This is because the training statistics will be a good match for the similar patterns and distributions in the deployed environment. However, it is critical to monitor the system in this environment and update the statistics as needed to avoid shifting out of domain.</p>
-<p>If the system will instead be used in a completely different environment, of which you have no knowledge, then the global statistics might be a better fit. While not as technically sound, the model will (hopefully) be less surprised by radically new activity across the channels.</p>
+<p>In this post we saw how spectrograms are fundamentally different than natural images. We then explored two ways of normalizing spectrograms when training neural networks: global normalization and channel-based normalization.</p>
+<p>Next we implemented these two normalization techniques and tested them against an unnormalized baseline on the ESC-50 dataset. Both normalizations showed a gain in performance, with global normalization outperforming channel-based normalization. We then offered some next steps that could further boost performance.</p>
+<p>In the end, the choice of spectrogram normalization will depend on how the system is used. For example, if the system will be deployed in an environment similar to the training environment, then normalizing by spectrogram channels makes more sense. This is because the training statistics will be a good match for the similar patterns and distributions in the deployed environment. However, it is critical to monitor the system in this environment and update the statistics as needed to avoid shifting out of domain.</p>
+<p>If the system will instead be used in a completely different environment, of which you have no knowledge, then the global statistics could be a better fit. While not as technically sound, the model will (hopefully) be less surprised by radically new activity across the channels.</p>
 <p>To recap, there is no one universally correct way to normalize spectrograms for every audio task. Like many aspects of deep learning, the final choice will be experimental and based on the specifics of both the problem and domain.</p>
 <p>I hope this post gave you an idea of how to normalize spectrograms. Even moreso, I hope that it gave you new ideas to try out. The ESC-50 is a great playground for any new ideas. Happy experimenting!</p>
 
